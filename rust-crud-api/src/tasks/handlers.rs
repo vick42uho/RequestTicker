@@ -218,17 +218,16 @@ pub async fn get_department_agents(
     )?;
 
     let query = r#"
-        SELECT 
-            u.id, u.username, u.name, u.email, u.role, u.position, u.department_id, u.phone_number,
+        SELECT
+            u.id, u.employee_code, u.username, u.name, u.email, u.role, u.position, u.department_id, u.phone_number,
             d.name as department
         FROM users u
         LEFT JOIN m_departments d ON u.department_id = d.id
-        WHERE u.department_id = $1 
-        AND u.role IN ('user', 'admin', 'agent') 
-        AND u.is_active = TRUE 
+        WHERE u.department_id = $1
+        AND u.role IN ('user', 'admin', 'agent')
+        AND u.is_active = TRUE
         ORDER BY u.name ASC
     "#;
-
     let agents = sqlx::query_as::<_, UserResponse>(query)
     .bind(department_id)
     .fetch_all(&pool)

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { fetchApi } from "@/lib/api";
 
-import { RiAddLine, RiEditLine, RiDeleteBin7Line, RiLoader4Line, RiPriceTag3Line, RiInboxArchiveLine, RiDownloadLine, RiUploadLine } from "@remixicon/react";
+import { RiAddLine, RiEditLine, RiDeleteBin7Line, RiLoader4Line, RiPriceTag3Line, RiInboxArchiveLine, RiDownloadLine, RiUploadLine, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,11 @@ export default function SubjectsTab() {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Filter and Pagination State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -63,12 +68,22 @@ export default function SubjectsTab() {
     try { 
         const res = await fetchApi<any[]>(`/requests/master/subjects/${topicId}`); 
         setSubjects((res as any) || []);
+        setCurrentPage(1); // Reset to page 1
     } 
     catch (error) { toast.error("โหลดข้อมูลหัวข้อปัญหาไม่สำเร็จ"); } 
     finally { setIsLoading(false); }
   };
 
   useEffect(() => { loadSubjects(); }, [topicId]);
+
+  // Filter logic
+  const filteredSubjects = subjects.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredSubjects.length / pageSize);
+  const paginatedSubjects = filteredSubjects.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const handleAddNew = () => { 
     setEditingId(null); 
@@ -174,121 +189,156 @@ export default function SubjectsTab() {
     catch (error: any) { toast.error("ลบไม่สำเร็จ"); }
   };
 
-  return (
-    <>
-      <Card className="shadow-sm border-border rounded-xl overflow-hidden bg-card">
-        <CardHeader className="border-b border-border bg-muted/20">
-        <div className="space-y-1 flex items-center gap-2">
-              <CardTitle className="text-lg font-bold text-foreground">หัวข้อปัญหา (Subjects)</CardTitle>
-             {/* ให้อยู่ขวาสุด */}
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                  <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx, .xls" className="hidden" />
-                <Button variant="outline" size="sm"  onClick={() => fileInputRef.current?.click()} disabled={!topicId}>
-                  <RiUploadLine className="h-4 w-4 mr-1.5" /> Import
-                </Button>
-                <Button variant="outline" size="sm"  onClick={handleExport} disabled={!topicId}>
-                  <RiDownloadLine className="h-4 w-4 mr-1.5" /> Export
-                </Button>
-                <Button onClick={handleAddNew} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground"  disabled={!topicId}><RiAddLine className=" h-4 w-4" /> เพิ่มหัวข้อปัญหา</Button>
+return (
+    <div className="w-full min-w-0 max-w-full">
+      <Card className="shadow-sm border-border rounded-xl overflow-hidden bg-card w-full">
+        {/* ปรับพื้นหลัง Header ให้ซอฟต์ลงในโหมดมืด */}
+        <CardHeader className="border-b border-border bg-muted/20 dark:bg-muted/10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full">
+                <CardTitle className="text-lg font-bold text-foreground shrink-0">หัวข้อปัญหา (Subjects)</CardTitle>
+                <div className="flex flex-wrap items-center gap-2">
+                    <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx, .xls" className="hidden" />
+                    <Button variant="outline" size="sm"  onClick={() => fileInputRef.current?.click()} disabled={!topicId} className="shrink-0 bg-background hover:bg-muted text-foreground">
+                        <RiUploadLine className="h-4 w-4 mr-1.5" /> Import
+                    </Button>
+                    <Button variant="outline" size="sm"  onClick={handleExport} disabled={!topicId} className="shrink-0 bg-background hover:bg-muted text-foreground">
+                        <RiDownloadLine className="h-4 w-4 mr-1.5" /> Export
+                    </Button>
+                    <Button onClick={handleAddNew} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"  disabled={!topicId}>
+                        <RiAddLine className="h-4 w-4 mr-1" /> เพิ่มหัวข้อปัญหา
+                    </Button>
                 </div>
-              
             </div>
-          <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
             
-            <div className="flex flex-col sm:flex-row items-center gap-2 bg-background p-1.5 border border-border rounded-lg shadow-sm w-full xl:w-auto">
-              <select className="bg-transparent h-9 px-3 text-sm w-full sm:w-48 text-foreground outline-none" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
-                <option value="">1. เลือกประเภทบริการ</option>
-                {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-              <div className="hidden sm:block w-px h-6 bg-border"></div>
-              <select className="bg-transparent h-9 px-3 text-sm w-full sm:w-48 text-foreground outline-none disabled:opacity-50" value={topicId} onChange={(e) => setTopicId(e.target.value)} disabled={!typeId}>
-                <option value="">2. เลือกหมวดหมู่</option>
-                {topics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-              <div className="hidden sm:block w-px h-6 bg-border"></div>
-              
-              
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mt-4 w-full">
+                <div className="flex flex-col md:flex-row items-center gap-2 bg-background dark:bg-background/50 p-1.5 border border-border rounded-lg shadow-sm w-full xl:w-auto">
+                    <select className="bg-transparent h-9 px-3 text-sm w-full md:w-48 text-foreground outline-none shrink-0" value={typeId} onChange={(e) => setTypeId(e.target.value)}>
+                        <option value="" className="dark:bg-card">1. เลือกประเภทบริการ</option>
+                        {types.map(t => <option key={t.id} value={t.id} className="dark:bg-card">{t.name}</option>)}
+                    </select>
+                    <div className="hidden md:block w-px h-6 bg-border"></div>
+                    <select className="bg-transparent h-9 px-3 text-sm w-full md:w-48 text-foreground outline-none disabled:opacity-50 shrink-0" value={topicId} onChange={(e) => setTopicId(e.target.value)} disabled={!typeId}>
+                        <option value="" className="dark:bg-card">2. เลือกหมวดหมู่</option>
+                        {topics.map(t => <option key={t.id} value={t.id} className="dark:bg-card">{t.name}</option>)}
+                    </select>
+                    <div className="hidden md:block w-px h-6 bg-border"></div>
+                    <div className="relative w-full">
+                        <RiSearchLine className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="ค้นหาหัวข้อปัญหา..."
+                            className="pl-9 h-9 bg-transparent border-none shadow-none focus-visible:ring-0 w-full min-w-[150px] text-foreground placeholder:text-muted-foreground"
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            disabled={!topicId}
+                        />
+                    </div>
+                </div>
             </div>
-          </div>
         </CardHeader>
-        <CardContent className="p-0">
-          {!topicId ? (
-            <div className="h-64 flex flex-col items-center justify-center text-muted-foreground bg-muted/10"><RiPriceTag3Line className="h-12 w-12 mb-3 opacity-50" /><p>กรุณาเลือกประเภทและหมวดหมู่ตามลำดับ</p></div>
-          ) : (
-            <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow className="border-border">
-                  <TableHead className="w-24 pl-6">รหัส</TableHead>
-                  <TableHead>ชื่อหัวข้อ</TableHead>
-                  <TableHead className="w-32 text-center">อนุมัติ (ผู้แจ้ง)</TableHead>
-                  <TableHead className="w-32 text-center">อนุมัติ (ผู้รับงาน)</TableHead>
-                  <TableHead className="text-right pr-6 w-32">จัดการ</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow className="border-border"><TableCell colSpan={5} className="h-32 text-center"><RiLoader4Line className="h-6 w-6 animate-spin mx-auto text-primary" /></TableCell></TableRow>
-                ) : subjects.length === 0 ? (
-                  <TableRow className="border-border"><TableCell colSpan={5} className="h-48 text-center text-muted-foreground"><RiInboxArchiveLine className="w-12 h-12 mx-auto mb-3 opacity-50" /><p>ไม่มีข้อมูล</p></TableCell></TableRow>
-                ) : subjects.map((sub) => (
-                  <TableRow key={sub.id} className="border-border hover:bg-muted/40">
-                    <TableCell className="pl-6 font-mono text-xs text-muted-foreground">{sub.id}</TableCell>
-                    <TableCell className="font-medium text-foreground">{sub.name}</TableCell>
-                    <TableCell className="text-center">
-                      {sub.requires_approval ? <Badge variant="outline" className="bg-blue-100/50 text-blue-700">ต้องอนุมัติ</Badge> : <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">ไม่ต้อง</span>}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {sub.requires_receiver_approval ? <Badge variant="outline" className="bg-amber-100/50 text-amber-700">ต้องอนุมัติ</Badge> : <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">ไม่ต้อง</span>}
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      <Button variant="ghost" size="icon" className="text-blue-600 dark:text-blue-400" onClick={() => handleEdit(sub)}><RiEditLine className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="text-red-600 dark:text-red-400" onClick={() => handleDelete(sub.id, sub.name)}><RiDeleteBin7Line className="h-4 w-4" /></Button>
-                    </TableCell>
+
+        <CardContent className="p-0 overflow-x-auto w-full">
+          <div className="min-w-[800px]">
+            {!topicId ? (
+              <div className="h-64 flex flex-col items-center justify-center text-muted-foreground bg-muted/10 dark:bg-muted/5"><RiPriceTag3Line className="h-12 w-12 mb-3 opacity-40 dark:opacity-20" /><p>กรุณาเลือกประเภทและหมวดหมู่ตามลำดับ</p></div>
+            ) : (
+              <>
+              <Table>
+                <TableHeader className="bg-muted/50 dark:bg-muted/20">
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="w-24 pl-6 text-muted-foreground">รหัส</TableHead>
+                    <TableHead className="text-muted-foreground">ชื่อหัวข้อ</TableHead>
+                    <TableHead className="w-32 text-center text-muted-foreground">อนุมัติ (ผู้แจ้ง)</TableHead>
+                    <TableHead className="w-32 text-center text-muted-foreground">อนุมัติ (ผู้รับงาน)</TableHead>
+                    <TableHead className="text-right pr-6 w-32 text-muted-foreground">จัดการ</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                </TableHeader>
+                <TableBody>
+                  {isLoading ? (
+                    <TableRow className="border-border hover:bg-transparent"><TableCell colSpan={5} className="h-32 text-center"><RiLoader4Line className="h-6 w-6 animate-spin mx-auto text-primary" /></TableCell></TableRow>
+                  ) : filteredSubjects.length === 0 ? (
+                    <TableRow className="border-border hover:bg-transparent"><TableCell colSpan={5} className="h-48 text-center text-muted-foreground"><RiInboxArchiveLine className="w-12 h-12 mx-auto mb-3 opacity-40 dark:opacity-20" /><p>ไม่พบข้อมูล</p></TableCell></TableRow>
+                  ) : paginatedSubjects.map((sub) => (
+                    <TableRow key={sub.id} className="border-border hover:bg-muted/40 dark:hover:bg-muted/10 transition-colors">
+                      <TableCell className="pl-6 font-mono text-xs text-muted-foreground">{sub.id}</TableCell>
+                      <TableCell className="font-medium text-foreground">{sub.name}</TableCell>
+                      <TableCell className="text-center">
+                        {/* ปรับสี Badge โหมดมืดให้คมชัด */}
+                        {sub.requires_approval ? <Badge variant="outline" className="bg-blue-100/50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">ต้องอนุมัติ</Badge> : <span className="text-xs text-muted-foreground bg-muted/80 dark:bg-muted/30 px-2 py-1 rounded">ไม่ต้อง</span>}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {/* ปรับสี Badge โหมดมืดให้คมชัด */}
+                        {sub.requires_receiver_approval ? <Badge variant="outline" className="bg-amber-100/50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800">ต้องอนุมัติ</Badge> : <span className="text-xs text-muted-foreground bg-muted/80 dark:bg-muted/30 px-2 py-1 rounded">ไม่ต้อง</span>}
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <Button variant="ghost" size="icon" className="text-blue-600 hover:text-blue-700 hover:bg-blue-100/50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/30" onClick={() => handleEdit(sub)}><RiEditLine className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="text-red-600 hover:text-red-700 hover:bg-red-100/50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30" onClick={() => handleDelete(sub.id, sub.name)}><RiDeleteBin7Line className="h-4 w-4" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-card">
+                  <p className="text-sm text-muted-foreground">
+                      แสดง {((currentPage - 1) * pageSize) + 1} ถึง {Math.min(currentPage * pageSize, filteredSubjects.length)} จาก {filteredSubjects.length} รายการ
+                  </p>
+                  <div className="flex items-center space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="bg-background text-foreground hover:bg-muted">
+                          <RiArrowLeftSLine className="h-4 w-4 mr-1" /> ก่อนหน้า
+                      </Button>
+                      <div className="flex items-center px-2 text-sm font-medium text-foreground">
+                          หน้า {currentPage} จาก {totalPages}
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="bg-background text-foreground hover:bg-muted">
+                          ถัดไป <RiArrowRightSLine className="h-4 w-4 ml-1" />
+                      </Button>
+                  </div>
+              </div>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-lg bg-card border-border">
+        <DialogContent className="sm:max-w-lg bg-card border-border w-[95vw] max-w-lg">
           <DialogHeader><DialogTitle className="text-xl text-foreground">{editingId ? "แก้ไขหัวข้อปัญหา" : "เพิ่มหัวข้อปัญหา"}</DialogTitle></DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 py-2">
             <div className="space-y-2">
-              <Label>ชื่อหัวข้อปัญหา <span className="text-destructive">*</span></Label>
-              <Input {...form.register("name")} className="bg-background" />
+              <Label className="text-foreground">ชื่อหัวข้อปัญหา <span className="text-destructive">*</span></Label>
+              <Input {...form.register("name")} className="bg-background border-border text-foreground focus-visible:ring-primary" />
             </div>
             
             <div className="space-y-3 pt-2">
               <Label className="text-foreground font-semibold">การตั้งค่าสายอนุมัติ</Label>
               
-              <div className="flex items-start space-x-3 p-3.5 border border-border rounded-lg bg-card hover:bg-muted/50 transition-colors">
-                <input type="checkbox" id="requires_approval" className="mt-0.5 w-4 h-4 rounded border-input bg-background text-primary" {...form.register("requires_approval")} />
-                <Label htmlFor="requires_approval" className="cursor-pointer text-sm leading-relaxed">
+              <div className="flex items-start space-x-3 p-3.5 border border-border rounded-lg bg-card hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors">
+                <input type="checkbox" id="requires_approval" className="mt-0.5 w-4 h-4 rounded border-input bg-background text-primary shrink-0 accent-primary" {...form.register("requires_approval")} />
+                <Label htmlFor="requires_approval" className="cursor-pointer text-sm leading-relaxed text-foreground">
                   1. อนุมัติฝั่งผู้แจ้ง (เช่น หัวหน้าแผนกผู้แจ้ง)<br/>
                   <span className="text-xs text-muted-foreground font-normal">เพื่อยืนยันความจำเป็นในการขอใช้บริการ</span>
                 </Label>
               </div>
 
-              <div className="flex items-start space-x-3 p-3.5 border border-border rounded-lg bg-card hover:bg-muted/50 transition-colors">
-                <input type="checkbox" id="requires_receiver_approval" className="mt-0.5 w-4 h-4 rounded border-input bg-background text-primary" {...form.register("requires_receiver_approval")} />
-                <Label htmlFor="requires_receiver_approval" className="cursor-pointer text-sm leading-relaxed">
+              <div className="flex items-start space-x-3 p-3.5 border border-border rounded-lg bg-card hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors">
+                <input type="checkbox" id="requires_receiver_approval" className="mt-0.5 w-4 h-4 rounded border-input bg-background text-primary shrink-0 accent-primary" {...form.register("requires_receiver_approval")} />
+                <Label htmlFor="requires_receiver_approval" className="cursor-pointer text-sm leading-relaxed text-foreground">
                   2. อนุมัติฝั่งผู้รับงาน (หัวหน้าแผนกที่รับผิดชอบตะกร้านี้)<br/>
                   <span className="text-xs text-muted-foreground font-normal">เพื่อตรวจสอบสต๊อก/งบประมาณ ก่อนแจกจ่ายงานให้ลูกน้อง</span>
                 </Label>
               </div>
-
             </div>
 
             <DialogFooter className="pt-4 border-t border-border mt-6">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>ยกเลิก</Button>
-              <Button type="submit" disabled={isSaving}>{isSaving ? <RiLoader4Line className="animate-spin h-4 w-4 mr-2" /> : "บันทึก"}</Button>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="bg-background hover:bg-muted text-foreground">ยกเลิก</Button>
+              <Button type="submit" disabled={isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground">{isSaving ? <RiLoader4Line className="animate-spin h-4 w-4 mr-2" /> : "บันทึก"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

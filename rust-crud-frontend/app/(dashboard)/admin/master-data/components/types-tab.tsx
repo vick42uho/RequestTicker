@@ -7,7 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { fetchApi } from "@/lib/api";
 
-import { RiAddLine, RiEditLine, RiDeleteBin7Line, RiLoader4Line, RiInboxArchiveLine, RiDownloadLine, RiUploadLine } from "@remixicon/react";
+import { RiAddLine, RiEditLine, RiDeleteBin7Line, RiLoader4Line, RiInboxArchiveLine, RiDownloadLine, RiUploadLine, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,11 @@ export default function TypesTab() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Filter and Pagination State
+    const [searchTerm, setSearchTerm] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10;
+
     const form = useForm<TypeFormValues>({
         resolver: zodResolver(typeSchema),
         defaultValues: { name: "", description: "", responsible_dept_id: "" },
@@ -45,6 +50,7 @@ export default function TypesTab() {
             setIsLoading(true);
             const res = await fetchApi<any[]>("/requests/master/types");
             setTypes(Array.isArray(res) ? res : []); 
+            setCurrentPage(1); // Reset to page 1 when data reloads
         } catch (error) {
             toast.error("ดึงข้อมูลประเภทบริการไม่สำเร็จ");
         } finally {
@@ -65,6 +71,16 @@ export default function TypesTab() {
         loadTypes(); 
         loadDepartments(); 
     }, []);
+
+    // Filter logic
+    const filteredTypes = types.filter(t => 
+        t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (t.description && t.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    // Pagination logic
+    const totalPages = Math.ceil(filteredTypes.length / pageSize);
+    const paginatedTypes = filteredTypes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const handleAdd = () => {
         setEditingId(null);
@@ -165,60 +181,99 @@ export default function TypesTab() {
 
     const getDeptName = (id: number) => departments.find(d => d.id === id)?.name || "ไม่ระบุ";
 
-    return (
-        <div className="space-y-4">
-            <Card className="border-border shadow-sm">
-                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-4">
-                    <CardTitle className="text-lg font-bold">ประเภทบริการ (Types)</CardTitle>
+ return (
+        <div className="space-y-4 w-full min-w-0 max-w-full">
+            <Card className="border-border shadow-sm w-full bg-card">
+                <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between pb-4 gap-4 w-full border-b border-border bg-muted/20 dark:bg-muted/10">
+                    <div className="flex flex-col space-y-2 w-full md:w-auto">
+                        <CardTitle className="text-lg font-bold shrink-0 text-foreground">ประเภทบริการ (Types)</CardTitle>
+                        <div className="relative w-full md:w-64">
+                            <RiSearchLine className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="ค้นหาประเภทบริการ..."
+                                className="pl-9 h-9 w-full bg-background border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-primary shadow-sm"
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            />
+                        </div>
+                    </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <input type="file" ref={fileInputRef} onChange={handleImport} accept=".xlsx, .xls" className="hidden" />
-                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                            <RiUploadLine className="mr-2 h-4 w-4" /> Import
+                        <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="shrink-0 bg-background hover:bg-muted text-foreground">
+                            <RiUploadLine className="mr-1.5 h-4 w-4" /> Import
                         </Button>
-                        <Button variant="outline" size="sm" onClick={handleExport}>
-                            <RiDownloadLine className="mr-2 h-4 w-4" /> Export
+                        <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 bg-background hover:bg-muted text-foreground">
+                            <RiDownloadLine className="mr-1.5 h-4 w-4" /> Export
                         </Button>
-                        <Button onClick={handleAdd} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                            <RiAddLine className="h-4 w-4" /> เพิ่มประเภท
+                        <Button onClick={handleAdd} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0">
+                            <RiAddLine className="h-4 w-4 mr-1" /> เพิ่มประเภท
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="flex justify-center p-8"><RiLoader4Line className="animate-spin h-8 w-8 text-muted-foreground" /></div>
-                    ) : types.length === 0 ? (
-                        <div className="text-center p-8 text-muted-foreground"><RiInboxArchiveLine className="mx-auto h-12 w-12 opacity-20 mb-3" /><p>ยังไม่มีข้อมูลประเภทบริการ</p></div>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-muted/50">
-                                    <TableHead className="w-[50px] font-semibold text-center">ID</TableHead>
-                                    <TableHead className="font-semibold">ชื่อประเภท</TableHead>
-                                    <TableHead className="font-semibold">รายละเอียด</TableHead>
-                                    <TableHead className="font-semibold text-center">แผนกรับผิดชอบ</TableHead>
-                                    <TableHead className="text-right font-semibold">จัดการ</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {types.map((type) => (
-                                    <TableRow key={type.id} className="hover:bg-muted/30">
-                                        <TableCell className="text-center text-muted-foreground">{type.id}</TableCell>
-                                        <TableCell className="font-medium">{type.name}</TableCell>
-                                        <TableCell className="text-muted-foreground">{type.description || "-"}</TableCell>
-                                        <TableCell className="text-center">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                                {getDeptName(type.responsible_dept_id)}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 dark:text-blue-400" onClick={() => handleEdit(type)}><RiEditLine className="h-4 w-4" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 dark:text-red-400" onClick={() => handleDelete(type.id, type.name)}><RiDeleteBin7Line className="h-4 w-4" /></Button>
-                                        </TableCell>
+                
+                <CardContent className="p-0 overflow-x-auto w-full">
+                    <div className="min-w-[800px]">
+                        {isLoading ? (
+                            <div className="flex justify-center p-8"><RiLoader4Line className="animate-spin h-8 w-8 text-primary" /></div>
+                        ) : filteredTypes.length === 0 ? (
+                            <div className="text-center p-8 text-muted-foreground"><RiInboxArchiveLine className="mx-auto h-12 w-12 opacity-40 dark:opacity-20 mb-3" /><p>ไม่พบข้อมูลประเภทบริการ</p></div>
+                        ) : (
+                            <>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/50 dark:bg-muted/20 border-border hover:bg-transparent">
+                                        <TableHead className="w-[50px] font-semibold text-center pl-6 text-muted-foreground">ID</TableHead>
+                                        <TableHead className="font-semibold text-muted-foreground">ชื่อประเภท</TableHead>
+                                        <TableHead className="font-semibold text-muted-foreground">รายละเอียด</TableHead>
+                                        <TableHead className="font-semibold text-center text-muted-foreground">แผนกรับผิดชอบ</TableHead>
+                                        <TableHead className="text-right font-semibold pr-6 w-32 text-muted-foreground">จัดการ</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    )}
+                                </TableHeader>
+                                <TableBody>
+                                    {paginatedTypes.map((type) => (
+                                        <TableRow key={type.id} className="hover:bg-muted/40 dark:hover:bg-muted/10 transition-colors border-border">
+                                            <TableCell className="text-center text-muted-foreground pl-6 font-mono text-xs">{type.id}</TableCell>
+                                            <TableCell className="font-medium text-foreground">{type.name}</TableCell>
+                                            <TableCell className="text-muted-foreground">{type.description || "-"}</TableCell>
+                                            <TableCell className="text-center">
+                                                {/* ปรับสี Badge โหมดมืดให้คมชัด */}
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-blue-100/50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
+                                                    {getDeptName(type.responsible_dept_id)}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-right space-x-2 pr-6">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100/50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/30" onClick={() => handleEdit(type)}><RiEditLine className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100/50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30" onClick={() => handleDelete(type.id, type.name)}><RiDeleteBin7Line className="h-4 w-4" /></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                            
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-card">
+                                    <p className="text-sm text-muted-foreground">
+                                        แสดง {((currentPage - 1) * pageSize) + 1} ถึง {Math.min(currentPage * pageSize, filteredTypes.length)} จาก {filteredTypes.length} รายการ
+                                    </p>
+                                    <div className="flex items-center space-x-2">
+                                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="bg-background text-foreground hover:bg-muted">
+                                            <RiArrowLeftSLine className="h-4 w-4 mr-1" /> ก่อนหน้า
+                                        </Button>
+                                        <div className="flex items-center px-2 text-sm font-medium text-foreground">
+                                            หน้า {currentPage} จาก {totalPages}
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="bg-background text-foreground hover:bg-muted">
+                                            ถัดไป <RiArrowRightSLine className="h-4 w-4 ml-1" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                            </>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
 
@@ -226,18 +281,18 @@ export default function TypesTab() {
                 <DialogContent className="sm:max-w-md bg-card border-border">
                     <DialogHeader><DialogTitle className="text-xl text-foreground">{editingId ? "แก้ไขประเภท" : "เพิ่มประเภท"}</DialogTitle></DialogHeader>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 py-2">
-                        <div className="space-y-2"><Label>ชื่อประเภท <span className="text-destructive">*</span></Label><Input {...form.register("name")} className="bg-background" /></div>
-                        <div className="space-y-2"><Label>คำอธิบาย</Label><Textarea {...form.register("description")} className="bg-background resize-none" rows={3} /></div>
+                        <div className="space-y-2"><Label className="text-foreground">ชื่อประเภท <span className="text-destructive">*</span></Label><Input {...form.register("name")} className="bg-background border-border text-foreground focus-visible:ring-primary" /></div>
+                        <div className="space-y-2"><Label className="text-foreground">คำอธิบาย</Label><Textarea {...form.register("description")} className="bg-background border-border text-foreground focus-visible:ring-primary resize-none" rows={3} /></div>
 
                         <div className="space-y-2">
-                            <Label>แผนกที่รับผิดชอบตะกร้างาน <span className="text-destructive">*</span></Label>
+                            <Label className="text-foreground">แผนกที่รับผิดชอบตะกร้างาน <span className="text-destructive">*</span></Label>
                             <Select onValueChange={(val) => form.setValue("responsible_dept_id", val)} value={form.watch("responsible_dept_id")}>
-                                <SelectTrigger className="bg-background">
+                                <SelectTrigger className="bg-background border-border text-foreground focus:ring-primary">
                                     <SelectValue placeholder="เลือกแผนกที่รับผิดชอบ" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-card border-border text-foreground">
                                     {departments.map(dept => (
-                                        <SelectItem key={dept.id} value={dept.id.toString()}>{dept.name}</SelectItem>
+                                        <SelectItem key={dept.id} value={dept.id.toString()} className="hover:bg-muted focus:bg-muted cursor-pointer">{dept.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -246,9 +301,9 @@ export default function TypesTab() {
                             )}
                         </div>
 
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>ยกเลิก</Button>
-                            <Button type="submit" disabled={isSaving}>{isSaving ? <RiLoader4Line className="animate-spin h-4 w-4 mr-2" /> : "บันทึก"}</Button>
+                        <DialogFooter className="pt-4 border-t border-border mt-6">
+                            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="bg-background hover:bg-muted text-foreground">ยกเลิก</Button>
+                            <Button type="submit" disabled={isSaving} className="bg-primary hover:bg-primary/90 text-primary-foreground">{isSaving ? <RiLoader4Line className="animate-spin h-4 w-4 mr-2" /> : "บันทึก"}</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

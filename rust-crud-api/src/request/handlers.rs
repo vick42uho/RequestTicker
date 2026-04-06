@@ -1065,18 +1065,17 @@ pub async fn get_department_approvers(
 
     // 2. ดึงผู้อนุมัติที่อยู่ "แผนกเดียวกัน" (และดึง CEO แผนก 8 มาเผื่อด้วย)
     let query = r#"
-        SELECT 
-            u.id, u.username, u.name, u.email, u.role, u.position, u.phone_number, u.department_id,
+        SELECT
+            u.id, u.employee_code, u.username, u.name, u.email, u.role, u.position, u.phone_number, u.department_id,
             d.name as department
         FROM users u
         LEFT JOIN m_departments d ON u.department_id = d.id
-        WHERE u.role = 'manager' 
+        WHERE u.role = 'manager'
         AND (
             u.department_id = (SELECT department_id FROM users WHERE id = $1)
-            OR u.department_id = 8 
+            OR u.department_id = 8
         )
     "#;
-
     let approvers = sqlx::query_as::<_, UserResponse>(query)
         .bind(user_id)
         .fetch_all(&pool).await
