@@ -1,0 +1,539 @@
+
+<center>รายงานสรุปรายการเบิกวัสดุ <font color="red"><b> 7 มีนาคม 2569</b></font> ถึงวันที่ <font color="red"><b> 7 มีนาคม 2569</b></font></center>
+<br>
+
+<table style="width:100%" class="table table-bordered">
+ <thead>
+<tr bgcolor="#87CEFA"> 
+       <th style="text-align:center;" width="5%"><font style="font-size:13px;">ลำดับ</font></th> 
+       <th style="text-align:center;" width="10%"><font style="font-size:13px;">รหัสสินค้า</font></th>
+       <th style="text-align:center;" width="55%"><font style="font-size:13px;">ชื่อสินค้า</font></th>
+       <th style="text-align:center;" width="15%"><font style="font-size:13px;">จำนวนขอเบิก</font></th>
+       <th style="text-align:center;" width="15%"><font style="font-size:13px;">จำนวนจ่ายจริง</font></th>
+       <!-- <th style="text-align:center;" width="15%"><font style="font-size:13px;">Stockคงเหลือ</font></th>   -->
+<tbody>
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">1.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QCAP</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">CAP หมวก DISPOSABLE (หมวกตัวหนอน สีเขียว)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">255</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">255</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-110622</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">2.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QGAUS2*2</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">GAUZE STERILE 2"X2"  (5 แผ่น/ซอง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">200</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">200</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-21353</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">3.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHSANI</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">TRIPLE SYRINGE พลาสติก (250 ชิ้น/แพ็ค)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">120</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">120</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-140475</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">4.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1310-001-0031</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ถุงหิ้ว สีขาว 6x14 นิ้ว SIZE S</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">100</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">100</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-34470</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">5.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QGOWN/B</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PE GOWN with THUMB HOOK  (จ่ายกลาง,แม่บ้าน,OR3,9AB,ทันตกรรม)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">100</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">100</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-59471</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">6.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1310-002-0015</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ซองซิปใส 9x13 ซม. (ผลิต 30 วัน)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">70</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">70</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-38199</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">7.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ODSUCT/C</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">SUCTION สี แบบถอดได้ (หลอดดูดน้ำลาย) (สีน้ำเงิน22810452)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">40</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">40</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-40339</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">8.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">OSUBIS/2</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">UBISTESIN 4% 1:200,000 inj (1.7 ml) (15010)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-22747</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">9.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">OSUBI/F</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">UBISTESIN FORTE 1:100,000 inj (1.7 ml) (15110)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-11057</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">10.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QDISP5</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">SYRINGE LOCK DISPOSE 5 ml</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-21433</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">11.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1310-001-0042</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ถุงหิ้วสีแดง 6x14 นิ้ว SIZE S (สั่งผลิต 2 สัปดาห์)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-7388</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">12.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1310-002-0021</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ถุงพลาสติกใส 5x8 นิ้ว ถุงร้อน</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-24148</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">13.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QNEED25-1</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">NEEDLE No.25*1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-22555</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">14.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">OSNEED/27L</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">DENTAL NEEDLE TERUMO 27G LONG</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-14435</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">15.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">OSNEED/30G</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">DENTAL NEEDLE TERUMO 30G SHORT</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">20</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-14288</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">16.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1310-001-0004</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ถุงหิ้ว HD สีขาว 12x20 หนา 0.024 มม. GRADE A (ผลิต 2 สัปดาห์)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">17</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">17</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-1149</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">17.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QSYRD20</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">SYRINGE DISPOSE 20 ml</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">14</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">14</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-19285</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">18.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QNEED18-11/2</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">NEEDLE No.18*1 1/2</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">14</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">14</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-19178</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">19.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1310-002-0011</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ซองซิปใส ขนาด 12x18 นิ้ว (ผลิต 30 วัน)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">12</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">12</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-616</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">20.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1220-004-0018</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">Shavonet DP (Moak Flower) ขนาด 200 ml หัวปั๊ม (สูตรยับยั้งเบคทีเรีย)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-2787</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">21.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1630-002-0011</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ทิชชู่เช็ดหน้าสีขาวโลโก้ (1กล่อง=60 แผ่น 2ชั้น) เนื้อเจนเทิล</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-9670</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">22.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QCOT/3</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">สำลีพันไม้ 3" 1 หัว SIZE S</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-10095</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">23.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1310-002-0009</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ซองซิปใส 5x8 นิ้ว (13x20 cm) (ผลิต 30 วัน)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-6021</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">24.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QBLAD12</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">BLADE #12 (FEATHER สีฟ้า)#</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">10</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-7185</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">25.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">EC-20/240</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">CEE 20 MOUTH WASH 250 ml</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">9</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">9</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-8330</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">26.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">CVASA/150</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">VASELINE PURE REPAIRING JELLY 100 gm (วาสลีน)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">9</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">9</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-1159</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">27.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1630-002-0012</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ทิชชู่เช็ดมือ เฟตต้า เบสต้า รุ่นPremium หนา 2 ชั้น (250x24)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">7</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">7</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-7131</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">28.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QBOXN</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ถังใส่วัสดุมีคมติดเชื้อ 5"x7" (สีแดง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">6</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">6</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-650</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">29.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FCBONL</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">CLEARFIL SE BOND X Kit (KU1970-TH)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">6</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">6</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-814</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">30.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QSPOC</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">MEDIPAL DISINFECTAN WIPE (200pads)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">6</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">6</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-1461</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">31.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QPROT</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PROTECTIVE VISOR (P9TH61ME)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">5</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">5</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-220</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">32.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">EALCH70/450</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">RUBBING ALCOHOL 70% SOLUTION 450 ml</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">5</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">5</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-6899</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">33.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">QGLOSF6.5</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">GLOVE STERILE SENSIFLEX,SRI-TRANG แบบไม่มีแป้ง #6.5 (ถุงมือผ่าตัด Sterile)(แผนกคลังไม่สำรอง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">5</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">5</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-8727</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">34.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">EANTI/200</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">YANHEE ALCOHOL HAND CLEAR 200 ml (หัวปั๊ม)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">5</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">5</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-1619</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">35.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PRRADENT</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">RADENT JAR (BUBBLE GUM) (P13-001) (13-650)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">4</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">4</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-2961</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">36.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PEFLU/3</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FLUORIDE 60 SECOND รสสตอบอรี่ (10-040)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">3</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">3</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-845</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">37.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ENSS500</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">NSS IRRIGATE SOLUTION 500 ml (ขวดพลาสติกล้างเลนส์) (LPSALINE)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">3</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">3</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-3891</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">38.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ENSS100/A</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">A.N.B. NSS IRRIGATE SOLUTION 100 ml (ขวดพลาสติกล้างเลนส์) (LPSALINE)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">3</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">3</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-1845</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">39.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FOGLU</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">GLUMA DESENITIZER 5 ml</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-605</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">40.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">EQFITC</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FIT CHECKER ADVANCED 1-1 (004903,0132F530000) (แผนกคลังไม่สำรอง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-186</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">41.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHMONO</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">MONOBOND N REFILL 5 G (REF.642967AN)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-317</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">42.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHMULB</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">MULTICORE FLOW REFILL 50 g BLUE (578915AN)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-490</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">43.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHMUL</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">MULTICORE FLOW REFILL 50 g MEDIUM (578914AN)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-1191</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">44.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PRPUM/L</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PUMICE หยาบ</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-253</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">45.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">1220-004-0016</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">Shavonet DP (Moak Flower) ขนาด 450 ml (สูตรยับยั้งแบคทีเรีย)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-171</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">46.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FETCH1.2</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ULTRA ETCH ECONO KIT 1.2ml (UPBOND-167)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">2</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-2896</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">47.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHPOCETH</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ULTRADENT POCELAIN ETCH REFILL 1.2 ml (406)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-310</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">48.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHSOFRE/T</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">SOFRELINER M KIT (REF=23308หรือ53353)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">18</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">49.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FCZ350/A3.5B</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">Z350 สี A 3.5B (7018A3.5B)(100373725)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-126</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">50.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">OLZOOM</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ZOOM CHAIRSIDE LIGHT-ACTIVATED WHITENING KIT (ZME2667=1+22-3764=1)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-329</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">51.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHTEMPB/C</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">TEMP-BOND CLEAR (33351)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-156</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">52.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHTEMPB/NE</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">TEMP-BOND N.E (29676)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-37</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">53.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHVENT</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">RELY X TRY-IN PASTE สี TRT (7614TRT) (แผนกคลังไม่สำรอง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-114</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">54.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PRPUM/F</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PUMICE FINE FF GRIT ละเอียด</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-85</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">55.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FCPAN5/A2</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PANAVIA V5 PASTE  A2 (Refill) (แผนกคลังไม่สำรอง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-457</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">56.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FCPAN5/CL</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PANAVIA V5 PASTE  CLEAR (Refill) (แผนกคลังไม่สำรอง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-320</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">57.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FCPAN5/P</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PANAVIA V5 TOOTH PRIMER 4 ml (แผนกคลังไม่สำรอง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-167</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">58.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">PHBK28</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ARTI FOR BK 28 (แผนกคลังไม่สำรอง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-44</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">59.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FDT026-027</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">DT-LIGHT POST 10 POSTS #1 (1590311B)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-767</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">60.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FDT026-028</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">DT-LIGHT POST 10 POSTS #2 (1590312B)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-759</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">61.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FDT026-029</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">DT-LIGHT-POST 10 POST #3 (1590313B)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-751</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">62.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FDT026-030</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">DT-LIGHT-POST 10 POSTS # 0.5 (15490310B)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-761</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">63.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FCESTS/A3</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ESTELITE SIGMA  A3 (PE01)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-105</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">64.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FCESTS/A3.5</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">ESTELITE SIGMA  A3.5 (PE01)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-68</font></td> -->
+</tr>		
+<tr>
+       <td style="text-align:center;"><font style="font-size:12px;">65.</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">OPH253049-2</font></td>
+       <td style="text-align:left;"><font style="font-size:12px;">FILM BARRIER (ซองซีน) (แผนกคลังไม่สำรอง)</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <td style="text-align:center;"><font style="font-size:12px;">1</font></td>
+       <!-- <td style="text-align:center;"><font style="font-size:12px;">-292</font></td> -->
+</tr>		
+  
+</tbody>      
+</table>
+
+

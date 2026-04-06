@@ -1,0 +1,37 @@
+use axum::{
+    routing::{get, post},
+    Router,
+    middleware as axum_middleware, 
+};
+use sqlx::PgPool;
+
+// 🌟 1. ดึง start_task และ close_task เข้ามา
+use super::handlers::{
+    accept_task, get_dept_tasks, get_my_assigned_tasks, 
+    get_department_agents, update_assignees, start_task, close_task, verify_task
+};
+use crate::middleware::auth; 
+
+pub fn create_router(pool: PgPool) -> Router {
+    Router::new()
+        // API สำหรับโหลดข้อมูล
+        .route("/dept", get(get_dept_tasks))
+        .route("/dept/agents", get(get_department_agents))
+        .route("/my", get(get_my_assigned_tasks))
+        
+        // API สำหรับ Action กับใบงาน
+        .route("/:id/accept", post(accept_task))
+        .route("/:id/assignees", post(update_assignees))
+        
+        // 🌟 2. เพิ่ม 2 เส้นทางใหม่
+        .route("/:id/start", post(start_task))
+        .route("/:id/close", post(close_task))
+
+        // 🌟 เพิ่มเส้นนี้สำหรับการตรวจรับงาน (UAT)
+        .route("/:id/verify", post(verify_task))
+        
+        // ใส่ Middleware บังคับตรวจ Token
+        .route_layer(axum_middleware::from_fn(auth)) 
+        
+        .with_state(pool)
+}

@@ -1,0 +1,274 @@
+
+
+ <table width="100%" border="1">
+ <tr>
+     <td colspan="7" align="center">
+     <font size="+2"> รายงานลบรูปรีวิว ตั้งแต่วันที่ 02/01/2026 ถึงวันที่ 03/02/2026	</font>
+     </td>
+ </tr>
+                        <thead>
+                          <tr>
+                                <th>ชื่อผู้รีวิว</th>
+                                <th>คลินิค</th>
+                                <th>หัตถการ</th>
+                                 <th>แพทย์</th>
+                                 <th>เหตุผลการลบ</th>
+                                 <th>ผู้ลบ</th>
+                                 <th>วันที่ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                                    <tr>
+                                <td>
+                                   <p class="list-item-heading">
+                                	คุณกรวิชญ์ เลียน 
+                                 </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    ศัลยกรรมตกแต่ง                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    BOTOX                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    นพ.กิตติชัย สิปิยารักษ์ 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    อื่นๆ 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    administrator 
+                                    </p>
+                                </td>
+                                <td >
+                                    <p class="text-muted">
+                                    2026-02-27 
+                                    </p>
+                                </td>
+                            </tr>
+   
+                                                        <tr>
+                                <td>
+                                   <p class="list-item-heading">
+                                	คุณกฤดาญชลี พลกุล 
+                                 </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    ศัลยกรรมตกแต่ง                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    BOTOX                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    แพทย์ไม่ระบุ 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    อื่นๆ 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    administrator 
+                                    </p>
+                                </td>
+                                <td >
+                                    <p class="text-muted">
+                                    2026-02-27 
+                                    </p>
+                                </td>
+                            </tr>
+   
+                                                        <tr>
+                                <td>
+                                   <p class="list-item-heading">
+                                	คุณวันวิสาข์ เวียงชัย 
+                                 </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    ศัลยกรรมตกแต่ง                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    เสริมหน้าอก                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    นพ.เกรียงไกร ทันตวิวัฒนา 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    อื่นๆ 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    คุณริญญาภัสร์ พัฒนา 
+                                    </p>
+                                </td>
+                                <td >
+                                    <p class="text-muted">
+                                    2026-02-24 
+                                    </p>
+                                </td>
+                            </tr>
+   
+                                                        <tr>
+                                <td>
+                                   <p class="list-item-heading">
+                                	คุณอัลิปรียา เพชรจันทร์ศรี 
+                                 </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    ศัลยกรรมตกแต่ง                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    ตาบน, เสริมจมูก                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    นพ.โชคชัย อมรสวัสดิ์วัฒนา 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    อื่นๆ 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    คุณริญญาภัสร์ พัฒนา 
+                                    </p>
+                                </td>
+                                <td >
+                                    <p class="text-muted">
+                                    2026-02-12 
+                                    </p>
+                                </td>
+                            </tr>
+   
+                                                        <tr>
+                                <td>
+                                   <p class="list-item-heading">
+                                	คุณไพลิน ธนวรภาคย์ 
+                                 </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    ศัลยกรรมตกแต่ง                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                                                        </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    นพ.เกรียงไกร ทันตวิวัฒนา 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    รูปภาพหมดอายุ 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    คุณรัญชนา  สุวรรณวงศ์ 
+                                    </p>
+                                </td>
+                                <td >
+                                    <p class="text-muted">
+                                    2026-02-10 
+                                    </p>
+                                </td>
+                            </tr>
+   
+                                                        <tr>
+                                <td>
+                                   <p class="list-item-heading">
+                                	คุณไพลิน ธนวรภาคย์ 
+                                 </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    ศัลยกรรมตกแต่ง                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                                                        </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    นพ.เกรียงไกร ทันตวิวัฒนา 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    รูปภาพหมดอายุ 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    คุณรัญชนา  สุวรรณวงศ์ 
+                                    </p>
+                                </td>
+                                <td >
+                                    <p class="text-muted">
+                                    2026-02-10 
+                                    </p>
+                                </td>
+                            </tr>
+   
+                                                        <tr>
+                                <td>
+                                   <p class="list-item-heading">
+                                	คุณไพลิน ธนวรภาคย์ 
+                                 </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    ศัลยกรรมตกแต่ง                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    ดึงคอ, ดึงหน้า                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    นพ.เกรียงไกร ทันตวิวัฒนา 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    รูปภาพหมดอายุ 
+                                    </p>
+                                </td>
+                                <td>
+                                    <p class="text-muted">
+                                    คุณรัญชนา  สุวรรณวงศ์ 
+                                    </p>
+                                </td>
+                                <td >
+                                    <p class="text-muted">
+                                    2026-02-10 
+                                    </p>
+                                </td>
+                            </tr>
+   
+                                                    </tbody>
+                    </table>
