@@ -4,6 +4,7 @@ use validator::Validate;
 
 use super::models::{Department, DepartmentPayload};
 use crate::error::ApiError;
+use crate::user::models::UserResponse;
 
 // 1. [Public] ดึงรายชื่อแผนกทั้งหมด (สำหรับหน้าสมัครสมาชิก และ Dropdown)
 pub async fn get_departments(State(pool): State<PgPool>) -> Result<Json<Vec<Department>>, ApiError> {
@@ -55,7 +56,6 @@ pub async fn delete_department(
     State(pool): State<PgPool>,
     Path(id): Path<i32>,
 ) -> Result<StatusCode, ApiError> {
-    // เปลี่ยนจาก DELETE FROM เป็น UPDATE SET del_flag = TRUE
     let query = "UPDATE m_departments SET del_flag = TRUE WHERE id = $1 AND del_flag = FALSE";
     let result = sqlx::query(query).bind(id).execute(&pool).await?;
     
@@ -63,4 +63,29 @@ pub async fn delete_department(
         return Err(ApiError::NotFound("ไม่พบแผนกที่ต้องการลบ หรือแผนกถูกลบไปแล้ว".to_string()));
     }
     Ok(StatusCode::NO_CONTENT)
+}
+
+// 🆕 ดึงรายชื่อ Agent ในแผนกที่ระบุ
+pub async fn get_department_agents(
+    State(pool): State<PgPool>,
+    Path(id): Path<i32>,
+) -> Result<Json<Vec<UserResponse>>, ApiError> {
+    let query = r#"
+        SELECT
+            u.id, u.employee_code, u.username, u.name, u.email, u.role, u.position, u.department_id, u.phone_number,
+            d.name as department
+        FROM users u
+        LEFT JOIN m_departments d ON u.department_id = d.id
+        WHERE u.department_id = $1
+        AND u.role IN ('user', 'admin', 'agent', 'manager')
+        AND u.is_active = TRUE
+        ORDER BY u.name ASC
+    "#;
+    let agents = sqlx::query_as::<_, UserResponse>(query)
+        .bind(id)
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+
+    Ok(Json(agents))
 }

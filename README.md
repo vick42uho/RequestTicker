@@ -27,7 +27,7 @@
 
 ## 📋 ฟีเจอร์หลักของระบบ
 
-1. **User Management**: ระบบสมาชิก, การเข้าสู่ระบบ (Login/Signup) และการจัดการบทบาท (Roles: Admin, Technician, User)
+1. **User Management**: ระบบสมาชิก, การเข้าสู่ระบบ (Login/Signup) และการจัดการบทบาท (Roles: Admin, Agent, User, Manager)
 2. **Request System**: ระบบส่งคำขอ (Tickets) พร้อมแนบไฟล์ภาพหรือเอกสาร
 3. **Task Management**: การมอบหมายงานและติดตามสถานะงาน
 4. **Approval Workflow**: ระบบอนุมัติคำขอตามลำดับขั้น (Department, Receiver approval)

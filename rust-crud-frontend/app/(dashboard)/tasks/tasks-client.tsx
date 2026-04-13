@@ -99,6 +99,8 @@ interface HelpdeskRequest {
   status_variant: string | null;
   status_color: string | null;
   assignees?: any[];
+  sub_tasks?: any[]; 
+  responsible_dept_id?: number; // 🆕 เพิ่มเพื่อเช็คสิทธิ์ปิดงาน
   plan_start_date?: string;
   plan_finish_date?: string;
   actual_start_date?: string;
@@ -117,9 +119,7 @@ function TasksInnerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // 💡 สมมติค่า role ของผู้ใช้ปัจจุบัน (ใช้ของจริงจาก Auth Context ของพี่ได้เลยครับ)
-  const userRole = "MANAGER";
-
+  const [currentUser, setCurrentUser] = useState<{ role: string; department_id: number | null } | null>(null);
   const [tasks, setTasks] = useState<HelpdeskRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -146,30 +146,36 @@ function TasksInnerContent() {
     useState<HelpdeskRequest | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      setCurrentUser(JSON.parse(userStr));
+    }
+  }, []);
 
   useEffect(() => {
     if (filterParam !== currentFilter) setCurrentFilter(filterParam);
   }, [filterParam, currentFilter]);
 
   const loadTechnicians = useCallback(async () => {
+    if (!currentUser?.department_id) return;
     try {
-      const data = await fetchApi<any[]>("/tasks/dept/agents", {
+      // 🎯 ดึงรายชื่อ Agent เฉพาะในแผนกตัวเอง
+      const data = await fetchApi<any[]>(`/departments/${currentUser.department_id}/agents`, {
         method: "GET",
       });
       setTechnicians(data || []);
     } catch (error) {
       console.error("Failed to load technicians");
     }
-  }, []);
+  }, [currentUser]);
 
   const loadTasks = useCallback(
     async (showLoading = true) => {
       try {
         if (showLoading) setIsLoading(true);
 
-        // ใช้ endpoint /requests ที่รองรับ Pagination เลขหน้าอยู่แล้ว
         const url = `/requests?filter=${currentFilter}&page=${currentPage}&limit=10`;
-
         const res = await fetchApi<PaginatedResponse<HelpdeskRequest>>(url, { method: "GET" });
 
         setTasks(res.data);
@@ -184,10 +190,21 @@ function TasksInnerContent() {
     [currentFilter, currentPage]
   );
 
+  const refreshRequestData = useCallback(async () => {
+    if (!selectedRequest) return;
+    try {
+      const updatedReq = await fetchApi<HelpdeskRequest>(`/requests/${selectedRequest.id}`);
+      setSelectedRequest(updatedReq);
+      setTasks(prev => prev.map(t => t.id === updatedReq.id ? updatedReq : t));
+    } catch (error) {
+      console.error("Failed to refresh request data");
+    }
+  }, [selectedRequest]);
+
   useEffect(() => {
     loadTasks();
-    loadTechnicians();
-  }, [currentFilter, currentPage, loadTasks, loadTechnicians]);
+    if (currentUser) loadTechnicians();
+  }, [currentFilter, currentPage, loadTasks, loadTechnicians, currentUser]);
 
   const handleTabChange = (value: string) => {
     setCurrentFilter(value);
@@ -199,7 +216,6 @@ function TasksInnerContent() {
     router.push(`/tasks?filter=${currentFilter}&page=${pageNumber}`);
   };
 
-  // 🌟 ฟังก์ชันสำหรับสร้างรายการหน้า (Pagination Logic)
   const renderPaginationItems = () => {
     const items = [];
     const maxVisiblePages = 5;
@@ -272,20 +288,17 @@ function TasksInnerContent() {
     return items;
   };
 
-  // 🌟 ฟังก์ชันเปิด Sheet รายละเอียด
   const openDetails = (e: React.MouseEvent, req: HelpdeskRequest) => {
     e.stopPropagation();
     setSelectedRequest(req);
     setIsSheetOpen(true);
   };
 
-  // 🌟 ฟังก์ชัน Auto-Save ผู้รับผิดชอบงาน
   const handleAssigneesChange = async (
     reqId: number,
     newAssigneeIds: number[]
   ) => {
     try {
-      // อัปเดต UI ทันทีเพื่อความลื่นไหล
       setTasks((prev) =>
         prev.map((t) => {
           if (t.id === reqId) {
@@ -298,7 +311,6 @@ function TasksInnerContent() {
         })
       );
 
-      // ยิง API บันทึกอัตโนมัติ
       await fetchApi(`/tasks/${reqId}/assignees`, {
         method: "POST",
         body: JSON.stringify({ assignee_ids: newAssigneeIds }),
@@ -306,11 +318,10 @@ function TasksInnerContent() {
       toast.success("บันทึกผู้รับผิดชอบอัตโนมัติ");
     } catch (error) {
       toast.error("บันทึกไม่สำเร็จ กรุณาลองใหม่");
-      loadTasks(false); // Rollback UI
+      loadTasks(false);
     }
   };
 
-  // 🌟 เปิด Dialog จัดการ (Manage Task)
   const handleOpenManageDialog = (
     e: React.MouseEvent,
     req: HelpdeskRequest
@@ -363,6 +374,20 @@ function TasksInnerContent() {
 
   const handleCloseTask = async () => {
     if (!managePrompt) return;
+
+    // 🛡️ [CHECKPOINT] ตรวจสอบงานย่อย (Sub-tasks) ก่อนปิดงานหลัก
+    const incompleteSubTasks = managePrompt.sub_tasks?.filter(st => st.status_id !== 4) || [];
+    if (incompleteSubTasks.length > 0) {
+      const depts = incompleteSubTasks.map(st => st.department_name).join(", ");
+      toast.error(
+        <div className="flex flex-col gap-1 text-sm">
+          <p className="font-bold">ไม่สามารถปิดใบงานได้!</p>
+          <p className="text-xs">ยังมีงานย่อยของแผนก ({depts}) ที่ยังไม่เสร็จสิ้น</p>
+        </div>
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await fetchApi(`/tasks/${managePrompt.id}/close`, {
@@ -371,7 +396,7 @@ function TasksInnerContent() {
           actual_finish_date: new Date(actualFinishDate).toISOString(),
         }),
       });
-      toast.success("ปิดงานสำเร็จ!");
+      toast.success("ปิดงานสำเร็จ! รอผู้แจ้งตรวจรับงาน");
       setManagePrompt(null);
       loadTasks(false);
     } catch (error: any) {
@@ -385,7 +410,7 @@ function TasksInnerContent() {
     <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2 font-sans">
             <RiToolsLine className="h-8 w-8 text-primary" />
             รายการปฏิบัติงาน
           </h1>
@@ -406,7 +431,7 @@ function TasksInnerContent() {
           </TabsTrigger>
         </TabsList>
 
-        <Card className="rounded-xl overflow-hidden border shadow-sm flex flex-col">
+        <Card className="rounded-xl overflow-hidden border shadow-sm flex flex-col font-sans">
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
@@ -435,280 +460,280 @@ function TasksInnerContent() {
                   </TableCell>
                 </TableRow>
               ) : (
-                tasks.map((req) => (
-                  <TableRow
-                    key={req.id}
-                    className="hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={(e) => openDetails(e, req)} // 🌟 คลิกแถวเปิด Sheet
-                  >
-                    {/* รหัสใบงาน */}
-                    <TableCell className="align-top font-bold text-primary">
-                      {req.req_code}
-                      <div className="text-[11px] text-muted-foreground mt-1 font-normal flex items-center gap-1">
-                        <RiTimeLine className="h-3 w-3" />
-                        {new Date(req.request_date).toLocaleDateString("th-TH")}
-                      </div>
-                    </TableCell>
+                tasks.map((req) => {
+                  // 🛡️ เช็คสิทธิ์การจัดการ: Admin หรือ Agent แผนกที่เป็นเจ้าของงานหลักเท่านั้น
+                  const isMainDeptOwner = currentUser?.role === "admin" || currentUser?.department_id === req.responsible_dept_id;
 
-                    {/* รายละเอียด + Hover ข้อมูลผู้แจ้ง */}
-                    <TableCell className="max-w-87.5 py-3">
-                      <div className="flex flex-col">
-                        <RequestHoverCard request={req}>
-                          {/* สิ่งที่อยู่ตรงนี้คือ Trigger (หน้าตาข้อความในตาราง) */}
-                          <div className="flex items-center gap-1.5 cursor-pointer group max-w-[300px]">
-                            <span className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-sm">
-                              {req.subject_name || "ไม่ระบุหัวข้อ"}
-                              {req.requirement && ` : ${req.requirement}`}
-                            </span>
-                            {(req.description || req.requirement) && (
-                              <RiInformationLine className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0" />
-                            )}
-                          </div>
-                        </RequestHoverCard>
-
-                        <span className="text-[11px] font-medium text-muted-foreground mt-1 flex items-center gap-1.5">
-                          <span className="bg-muted px-1.5 py-0.5 rounded text-foreground/70">
-                            {req.type_name}
-                          </span>
-                          {req.topic_name && (
-                            <>
-                              <span>•</span>
-                              <span>{req.topic_name}</span>
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    </TableCell>
-
-                    {/* 🌟 ผู้รับผิดชอบ (Avatar Group + Auto-save) */}
-                    <TableCell
-                      className="align-top"
-                      onClick={(e) => e.stopPropagation()}
+                  return (
+                    <TableRow
+                      key={req.id}
+                      className="hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={(e) => openDetails(e, req)}
                     >
-                      {userRole === "MANAGER" || userRole === "ADMIN" ? (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <div className="flex items-center gap-2 cursor-pointer p-1.5 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border min-w-[120px]">
-                              <div className="flex -space-x-2 overflow-hidden">
-                                {req.assignees && req.assignees.length > 0 ? (
-                                  req.assignees.map((assignee) => (
-                                    <HoverCard
-                                      key={assignee.id}
-                                      openDelay={200}
-                                    >
-                                      <HoverCardTrigger asChild>
-                                        <Avatar className="w-8 h-8 border-2 border-background hover:z-10 transition-transform hover:scale-110">
-                                          <AvatarImage
-                                            src={`https://api.dicebear.com/7.x/initials/svg?seed=${assignee.name}&backgroundColor=e2e8f0`}
-                                          />
-                                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                            {assignee.name
-                                              .substring(0, 2)
-                                              .toUpperCase()}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                      </HoverCardTrigger>
-                                      <HoverCardContent
-                                        side="top"
-                                        className="w-auto p-3 text-sm shadow-md z-50"
-                                      >
-                                        <div className="font-bold flex items-center gap-2">
-                                          <RiUserLine className="w-4 h-4 text-muted-foreground" />
-                                          {assignee.name}
-                                        </div>
-                                        <div className="text-muted-foreground flex items-center gap-2 mt-1.5">
-                                          <RiPhoneLine className="w-4 h-4" />
-                                          {assignee.phone_number ||
-                                            "ไม่มีเบอร์โทรศัพท์"}
-                                        </div>
-                                      </HoverCardContent>
-                                    </HoverCard>
-                                  ))
-                                ) : (
-                                  <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 text-gray-400 hover:border-primary hover:text-primary transition-colors">
-                                    <RiUserLine className="w-4 h-4" />
-                                  </div>
-                                )}
-                              </div>
-                              {(!req.assignees ||
-                                req.assignees.length === 0) && (
-                                <span className="text-xs text-muted-foreground ml-1">
-                                  มอบหมาย...
-                                </span>
-                              )}
-                              {req.assignees && req.assignees.length > 0 && (
-                                <span className="text-xs text-muted-foreground ml-1 font-medium bg-secondary px-1.5 py-0.5 rounded-full">
-                                  {req.assignees.length} คน
-                                </span>
+                      <TableCell className="align-top font-bold text-primary">
+                        {req.req_code}
+                        <div className="text-[11px] text-muted-foreground mt-1 font-normal flex items-center gap-1">
+                          <RiTimeLine className="h-3 w-3" />
+                          {new Date(req.request_date).toLocaleDateString("th-TH")}
+                        </div>
+                      </TableCell>
+
+                      <TableCell className="max-w-87.5 py-3">
+                        <div className="flex flex-col">
+                          <RequestHoverCard request={req}>
+                            <div className="flex items-center gap-1.5 cursor-pointer group max-w-[300px]">
+                              <span className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-sm">
+                                {req.subject_name || "ไม่ระบุหัวข้อ"}
+                                {req.requirement && ` : ${req.requirement}`}
+                              </span>
+                              {(req.description || req.requirement) && (
+                                <RiInformationLine className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0" />
                               )}
                             </div>
-                          </PopoverTrigger>
+                          </RequestHoverCard>
 
-                          <PopoverContent
-                            className="w-[260px] p-0"
-                            align="start"
-                          >
-                            <Command>
-                              <CommandInput
-                                placeholder="ค้นหาชื่อผู้รับผิดชอบ..."
-                                className="h-9"
-                              />
-                              <CommandList>
-                                <CommandEmpty>
-                                  ไม่พบรายชื่อผู้รับผิดชอบ
-                                </CommandEmpty>
-                                <CommandGroup>
-                                  {technicians.map((agent) => {
-                                    const isSelected = req.assignees?.some(
-                                      (a) => a.id === agent.id
-                                    );
-                                    return (
-                                      <CommandItem
-                                        key={agent.id}
-                                        onSelect={() => {
-                                          let newSelected;
-                                          if (isSelected) {
-                                            newSelected = (req.assignees || [])
-                                              .filter((a) => a.id !== agent.id)
-                                              .map((a) => a.id);
-                                          } else {
-                                            newSelected = [
-                                              ...(req.assignees || []).map(
-                                                (a) => a.id
-                                              ),
-                                              agent.id,
-                                            ];
-                                          }
-                                          handleAssigneesChange(
-                                            req.id,
-                                            newSelected
-                                          );
-                                        }}
-                                        className="flex items-center justify-between cursor-pointer py-2"
+                          <span className="text-[11px] font-medium text-muted-foreground mt-1 flex items-center gap-1.5">
+                            <span className="bg-muted px-1.5 py-0.5 rounded text-foreground/70">
+                              {req.type_name}
+                            </span>
+                            {req.topic_name && (
+                              <>
+                                <span>•</span>
+                                <span>{req.topic_name}</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      <TableCell
+                        className="align-top"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {isMainDeptOwner ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <div className="flex items-center gap-2 cursor-pointer p-1.5 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border min-w-[120px]">
+                                <div className="flex -space-x-2 overflow-hidden">
+                                  {req.assignees && req.assignees.length > 0 ? (
+                                    req.assignees.map((assignee) => (
+                                      <HoverCard
+                                        key={assignee.id}
+                                        openDelay={200}
                                       >
-                                        <div className="flex items-center gap-2">
-                                          <Avatar className="w-7 h-7">
+                                        <HoverCardTrigger asChild>
+                                          <Avatar className="w-8 h-8 border-2 border-background hover:z-10 transition-transform hover:scale-110">
                                             <AvatarImage
-                                              src={`https://api.dicebear.com/7.x/initials/svg?seed=${agent.name}&backgroundColor=e2e8f0`}
+                                              src={`https://api.dicebear.com/7.x/initials/svg?seed=${assignee.name}&backgroundColor=e2e8f0`}
                                             />
-                                            <AvatarFallback className="text-[10px]">
-                                              {agent.name.substring(0, 2)}
+                                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                              {assignee.name
+                                                .substring(0, 2)
+                                                .toUpperCase()}
                                             </AvatarFallback>
                                           </Avatar>
-                                          <div className="flex flex-col">
-                                            <span className="text-sm font-medium">
-                                              {agent.name}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                              <RiPhoneLine className="w-3 h-3" />
-                                              {agent.phone_number || "-"}
-                                            </span>
+                                        </HoverCardTrigger>
+                                        <HoverCardContent
+                                          side="top"
+                                          className="w-auto p-3 text-sm shadow-md z-50"
+                                        >
+                                          <div className="font-bold flex items-center gap-2">
+                                            <RiUserLine className="w-4 h-4 text-muted-foreground" />
+                                            {assignee.name}
                                           </div>
-                                        </div>
-                                        {isSelected && (
-                                          <div className="bg-primary/20 text-primary p-1 rounded-full">
-                                            <RiCheckLine className="w-3 h-3 font-bold" />
+                                          <div className="text-muted-foreground flex items-center gap-2 mt-1.5">
+                                            <RiPhoneLine className="w-4 h-4" />
+                                            {assignee.phone_number ||
+                                              "ไม่มีเบอร์โทรศัพท์"}
                                           </div>
-                                        )}
-                                      </CommandItem>
-                                    );
-                                  })}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                      ) : (
-                        <div className="flex -space-x-2 overflow-hidden py-1">
-                          {req.assignees && req.assignees.length > 0 ? (
-                            req.assignees.map((assignee) => (
-                              <HoverCard key={assignee.id} openDelay={200}>
-                                <HoverCardTrigger asChild>
-                                  <Avatar className="w-8 h-8 border-2 border-background hover:z-10 transition-transform hover:scale-110 cursor-default">
-                                    <AvatarImage
-                                      src={`https://api.dicebear.com/7.x/initials/svg?seed=${assignee.name}&backgroundColor=e2e8f0`}
-                                    />
-                                    <AvatarFallback className="text-xs">
-                                      {assignee.name
-                                        .substring(0, 2)
-                                        .toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                </HoverCardTrigger>
-                                <HoverCardContent
-                                  side="top"
-                                  className="w-auto p-3 text-sm shadow-md z-50"
-                                >
-                                  <div className="font-bold flex items-center gap-2">
-                                    <RiUserLine className="w-4 h-4 text-muted-foreground" />
-                                    {assignee.name}
-                                  </div>
-                                  <div className="text-muted-foreground flex items-center gap-2 mt-1.5">
-                                    <RiPhoneLine className="w-4 h-4" />
-                                    {assignee.phone_number ||
-                                      "ไม่มีเบอร์โทรศัพท์"}
-                                  </div>
-                                </HoverCardContent>
-                              </HoverCard>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground italic">
-                              - ยังไม่ระบุ -
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </TableCell>
+                                        </HoverCardContent>
+                                      </HoverCard>
+                                    ))
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 text-gray-400 hover:border-primary hover:text-primary transition-colors">
+                                      <RiUserLine className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                </div>
+                                {(!req.assignees ||
+                                  req.assignees.length === 0) && (
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    มอบหมาย...
+                                  </span>
+                                )}
+                                {req.assignees && req.assignees.length > 0 && (
+                                  <span className="text-xs text-muted-foreground ml-1 font-medium bg-secondary px-1.5 py-0.5 rounded-full">
+                                    {req.assignees.length} คน
+                                  </span>
+                                )}
+                              </div>
+                            </PopoverTrigger>
 
-                    {/* กำหนดเสร็จ (SLA) */}
-                    <TableCell className="align-top">
-                      {req.plan_finish_date ? (
-                        <div className="text-xs flex items-center gap-1 text-emerald-600 font-medium mt-1">
-                          <RiCalendarCheckLine className="h-3.5 w-3.5" />
-                          {new Date(req.plan_finish_date).toLocaleString(
-                            "th-TH",
-                            {
-                              day: "2-digit",
-                              month: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }
-                          )}{" "}
-                          น.
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground italic mt-1 inline-block">
-                          ยังไม่กำหนด
-                        </span>
-                      )}
-                    </TableCell>
+                            <PopoverContent
+                              className="w-[260px] p-0"
+                              align="start"
+                            >
+                              <Command>
+                                <CommandInput
+                                  placeholder="ค้นหาชื่อผู้รับผิดชอบ..."
+                                  className="h-9"
+                                />
+                                <CommandList>
+                                  <CommandEmpty>
+                                    ไม่พบรายชื่อผู้รับผิดชอบ
+                                  </CommandEmpty>
+                                  <CommandGroup>
+                                    {technicians.map((agent) => {
+                                      const isSelected = req.assignees?.some(
+                                        (a) => a.id === agent.id
+                                      );
+                                      return (
+                                        <CommandItem
+                                          key={agent.id}
+                                          onSelect={() => {
+                                            let newSelected;
+                                            if (isSelected) {
+                                              newSelected = (req.assignees || [])
+                                                .filter((a) => a.id !== agent.id)
+                                                .map((a) => a.id);
+                                            } else {
+                                              newSelected = [
+                                                ...(req.assignees || []).map(
+                                                  (a) => a.id
+                                                ),
+                                                agent.id,
+                                              ];
+                                            }
+                                            handleAssigneesChange(
+                                              req.id,
+                                              newSelected
+                                            );
+                                          }}
+                                          className="flex items-center justify-between cursor-pointer py-2"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <Avatar className="w-7 h-7">
+                                              <AvatarImage
+                                                src={`https://api.dicebear.com/7.x/initials/svg?seed=${agent.name}&backgroundColor=e2e8f0`}
+                                              />
+                                              <AvatarFallback className="text-[10px]">
+                                                {agent.name.substring(0, 2)}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col">
+                                              <span className="text-sm font-medium">
+                                                {agent.name}
+                                              </span>
+                                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                                <RiPhoneLine className="w-3 h-3" />
+                                                {agent.phone_number || "-"}
+                                              </span>
+                                            </div>
+                                          </div>
+                                          {isSelected && (
+                                            <div className="bg-primary/20 text-primary p-1 rounded-full">
+                                              <RiCheckLine className="w-3 h-3 font-bold" />
+                                            </div>
+                                          )}
+                                        </CommandItem>
+                                      );
+                                    })}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <div className="flex -space-x-2 overflow-hidden py-1">
+                            {req.assignees && req.assignees.length > 0 ? (
+                              req.assignees.map((assignee) => (
+                                <HoverCard key={assignee.id} openDelay={200}>
+                                  <HoverCardTrigger asChild>
+                                    <Avatar className="w-8 h-8 border-2 border-background hover:z-10 transition-transform hover:scale-110 cursor-default">
+                                      <AvatarImage
+                                        src={`https://api.dicebear.com/7.x/initials/svg?seed=${assignee.name}&backgroundColor=e2e8f0`}
+                                      />
+                                      <AvatarFallback className="text-xs">
+                                        {assignee.name
+                                          .substring(0, 2)
+                                          .toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  </HoverCardTrigger>
+                                  <HoverCardContent
+                                    side="top"
+                                    className="w-auto p-3 text-sm shadow-md z-50"
+                                  >
+                                    <div className="font-bold flex items-center gap-2">
+                                      <RiUserLine className="w-4 h-4 text-muted-foreground" />
+                                      {assignee.name}
+                                    </div>
+                                    <div className="text-muted-foreground flex items-center gap-2 mt-1.5">
+                                      <RiPhoneLine className="w-4 h-4" />
+                                      {assignee.phone_number ||
+                                        "ไม่มีเบอร์โทรศัพท์"}
+                                    </div>
+                                  </HoverCardContent>
+                                </HoverCard>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">
+                                - ยังไม่ระบุ -
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
 
-                    {/* สถานะ */}
-                    <TableCell className="align-top">
-                      <StatusBadge
-                        statusId={req.status_id}
-                        statusName={req.status_name}
-                        statusColor={req.status_color}
-                        statusVariant={req.status_variant}
-                      />
-                    </TableCell>
+                      <TableCell className="align-top">
+                        {req.plan_finish_date ? (
+                          <div className="text-xs flex items-center gap-1 text-emerald-600 font-medium mt-1">
+                            <RiCalendarCheckLine className="h-3.5 w-3.5" />
+                            {new Date(req.plan_finish_date).toLocaleString(
+                              "th-TH",
+                              {
+                                day: "2-digit",
+                                month: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}{" "}
+                            น.
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic mt-1 inline-block">
+                            ยังไม่กำหนด
+                          </span>
+                        )}
+                      </TableCell>
 
-                    {/* จัดการ (เปิด Dialog) */}
-                    <TableCell
-                      className="text-right align-top"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-8 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                        onClick={(e) => handleOpenManageDialog(e, req)}
+                      <TableCell className="align-top">
+                        <StatusBadge
+                          statusId={req.status_id}
+                          statusName={req.status_name}
+                          statusColor={req.status_color}
+                          statusVariant={req.status_variant}
+                        />
+                      </TableCell>
+
+                      <TableCell
+                        className="text-right align-top"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <RiToolsLine className="h-4 w-4 mr-1" /> จัดการ
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                        {isMainDeptOwner && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-8 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                            onClick={(e) => handleOpenManageDialog(e, req)}
+                          >
+                            <RiToolsLine className="h-4 w-4 mr-1" /> จัดการ
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -753,16 +778,15 @@ function TasksInnerContent() {
         open={!!managePrompt}
         onOpenChange={(open) => !open && setManagePrompt(null)}
       >
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[450px] font-sans">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <RiToolsLine className="text-primary" />
-              จัดการใบงาน:{" "}
-              <span className="text-primary">{managePrompt?.req_code}</span>
+            <DialogTitle className="flex items-center gap-2 text-primary">
+              <RiToolsLine />
+              จัดการใบงาน: {managePrompt?.req_code}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="py-4 space-y-5">
+          <div className="py-4 space-y-5 text-sm">
             {[2, 7, 8, 10].includes(managePrompt?.status_id || 0) ? (
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 p-6 rounded-xl flex flex-col items-center gap-4 text-center">
                 <div className="h-12 w-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
@@ -772,8 +796,7 @@ function TasksInnerContent() {
                   <p className="font-bold text-amber-900 dark:text-amber-100 text-lg">อยู่ระหว่างรอการอนุมัติ</p>
                   <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed">
                     ใบงานนี้ยังไม่ผ่านการอนุมัติครบตามขั้นตอนของระบบ <br />
-                    กรุณารอให้ผู้อนุมัติพิจารณาให้เสร็จสิ้น <br />
-                    จึงจะสามารถเริ่มบันทึกเวลาปฏิบัติงานได้
+                    กรุณารอให้ผู้อนุมัติพิจารณาให้เสร็จสิ้นก่อนเริ่มบันทึกเวลา
                   </p>
                 </div>
                 <Badge className="bg-amber-500 text-white border-none px-3 py-1">
@@ -782,120 +805,56 @@ function TasksInnerContent() {
               </div>
             ) : !managePrompt?.actual_start_date ? (
               <>
-                <div className="bg-muted/30 p-3 rounded-md border border-dashed mb-2">
-                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                    <RiInformationLine className="h-4 w-4" />{" "}
-                    กำหนดเวลาเพื่อเริ่มงาน
-                  </p>
+                <div className="bg-muted/30 p-3 rounded-md border border-dashed mb-2 flex items-center gap-2">
+                  <RiInformationLine className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium">กำหนดเวลาเพื่อเริ่มงาน</p>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold">
-                    วันที่ประมาณการเริ่ม <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    type="datetime-local"
-                    value={planStartDate}
-                    onChange={(e) => setPlanStartDate(e.target.value)}
-                  />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">วันที่ประมาณการเริ่ม <span className="text-red-500">*</span></label>
+                  <Input type="datetime-local" value={planStartDate} onChange={(e) => setPlanStartDate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold">
-                    วันที่ประมาณการเสร็จ (SLA){" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    type="datetime-local"
-                    value={planFinishDate}
-                    onChange={(e) => setPlanFinishDate(e.target.value)}
-                  />
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">วันที่ประมาณการเสร็จ (SLA) <span className="text-red-500">*</span></label>
+                  <Input type="datetime-local" value={planFinishDate} onChange={(e) => setPlanFinishDate(e.target.value)} />
                 </div>
 
                 {planStartDate && planFinishDate && (
-                  <Button
-                    className="w-full bg-primary hover:bg-primary/90 mt-4 h-10"
-                    onClick={handleStartTask}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <RiLoader4Line className="animate-spin mr-2 h-5 w-5" />
-                    ) : (
-                      <RiPlayCircleLine className="mr-2 h-5 w-5" />
-                    )}
+                  <Button className="w-full bg-primary hover:bg-primary/90 mt-4 h-10 shadow-lg shadow-primary/20" onClick={handleStartTask} disabled={isSubmitting}>
+                    {isSubmitting ? <RiLoader4Line className="animate-spin mr-2 h-5 w-5" /> : <RiPlayCircleLine className="mr-2 h-5 w-5" />}
                     รับงาน (เริ่มดำเนินการทันที)
                   </Button>
                 )}
               </>
             ) : (
               <>
-                <div className="bg-blue-50/50 p-4 rounded-md border border-blue-100 space-y-3">
+                <div className="bg-blue-50/50 p-4 rounded-md border border-blue-100 space-y-3 shadow-sm">
                   <div className="flex justify-between items-center border-b border-blue-100 pb-2">
-                    <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
-                      เวลาที่ประเมินไว้ (Plan)
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className="bg-blue-100 text-blue-700 border-none text-[10px]"
-                    >
-                      In Progress
-                    </Badge>
+                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">แผนการดำเนินงาน (Plan)</span>
+                    <Badge variant="outline" className="bg-blue-100 text-blue-700 border-none text-[9px] h-5">กำลังดำเนินการ</Badge>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <p className="text-xs text-muted-foreground">เริ่ม:</p>
-                      <p className="font-medium">
-                        {new Date(managePrompt.plan_start_date!).toLocaleString(
-                          "th-TH",
-                          {
-                            day: "2-digit",
-                            month: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }
-                        )}
-                      </p>
+                      <p className="text-muted-foreground mb-0.5">เริ่ม:</p>
+                      <p className="font-bold">{new Date(managePrompt.plan_start_date!).toLocaleString("th-TH")}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">
-                        เสร็จ (SLA):
-                      </p>
-                      <p className="font-medium text-amber-600">
-                        {new Date(
-                          managePrompt.plan_finish_date!
-                        ).toLocaleString("th-TH", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
+                      <p className="text-muted-foreground mb-0.5">เสร็จ (SLA):</p>
+                      <p className="font-bold text-amber-600">{new Date(managePrompt.plan_finish_date!).toLocaleString("th-TH")}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2 pt-2">
                   <label className="text-sm font-bold text-emerald-600 flex items-center gap-1">
-                    <RiCheckDoubleLine className="h-4 w-4" />{" "}
+                    <RiCheckDoubleLine className="h-4 w-4" />
                     วันที่สิ้นสุดงานจริง <span className="text-red-500">*</span>
                   </label>
-                  <Input
-                    type="datetime-local"
-                    value={actualFinishDate}
-                    onChange={(e) => setActualFinishDate(e.target.value)}
-                    className="border-emerald-200 focus-visible:ring-emerald-500"
-                  />
+                  <Input type="datetime-local" value={actualFinishDate} onChange={(e) => setActualFinishDate(e.target.value)} className="border-emerald-200 focus-visible:ring-emerald-500" />
                 </div>
 
                 {actualFinishDate && (
-                  <Button
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 mt-4 h-10"
-                    onClick={handleCloseTask}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <RiLoader4Line className="animate-spin mr-2 h-5 w-5" />
-                    ) : (
-                      <RiCheckLine className="mr-2 h-5 w-5" />
-                    )}
+                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700 mt-4 h-10 shadow-lg shadow-emerald-200" onClick={handleCloseTask} disabled={isSubmitting}>
+                    {isSubmitting ? <RiLoader4Line className="animate-spin mr-2 h-5 w-5" /> : <RiCheckLine className="mr-2 h-5 w-5" />}
                     บันทึกปิดงาน
                   </Button>
                 )}
@@ -905,11 +864,11 @@ function TasksInnerContent() {
         </DialogContent>
       </Dialog>
 
-      {/* ================= 🌟 SHEET ดูรายละเอียดใบงานพรีเมียม (Premium View) ================= */}
-            <RequestDetailSheet 
+      <RequestDetailSheet 
         isOpen={isSheetOpen} 
         onClose={setIsSheetOpen} 
         request={selectedRequest}
+        onRefresh={refreshRequestData}
         footerActions={
           <>
             <Button variant="outline" onClick={() => setIsSheetOpen(false)} className="w-full sm:w-auto">

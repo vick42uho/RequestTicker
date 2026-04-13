@@ -17,18 +17,18 @@ pub struct UpdateAssigneesPayload {
 }
 
 // ==========================================
-// 🌟 โครงสร้างใหม่สำหรับระบบ Pagination แบบ Cursor (สเกลได้หลักล้าน)
+// 🌟 โครงสร้างใหม่สำหรับระบบ Pagination แบบ Cursor
 // ==========================================
 #[derive(Deserialize)]
 pub struct CursorFilter {
-    pub cursor: Option<i32>, // ID ของรายการสุดท้ายที่โหลดไป (หน้าแรกส่ง null มา)
+    pub cursor: Option<i32>,
     pub limit: Option<i64>,
 }
 
 #[derive(Serialize)]
 pub struct CursorPaginatedResponse<T> {
     pub data: Vec<T>,
-    pub next_cursor: Option<i32>, // ถ้าเป็น null แปลว่าข้อมูลหมดแล้ว ไม่มีหน้าต่อไป
+    pub next_cursor: Option<i32>,
     pub has_more: bool,
 }
 
@@ -45,10 +45,55 @@ pub struct CloseTaskPayload {
 }
 
 // ==========================================
-// 🌟 โครงสร้างสำหรับ "ตรวจรับงาน" (ผ่าน / ตีกลับ)
+// 🌟 โครงสร้างสำหรับ "งานย่อย" (Sub-tasks)
+// ==========================================
+#[derive(Deserialize, Debug)]
+pub struct SubTaskInput {
+    pub responsible_dept_id: i32,
+    pub description: Option<String>,
+    pub plan_start_date: Option<DateTime<Utc>>, // 🆕 เพิ่มวันที่เริ่ม
+    pub plan_finish_date: Option<DateTime<Utc>>, // 🆕 เพิ่มวันที่เสร็จ
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateSubTasksPayload {
+    pub sub_tasks: Vec<SubTaskInput>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UpdateSubTaskStatusPayload {
+    pub status_id: i32,
+    pub description: Option<String>,
+    pub plan_start_date: Option<DateTime<Utc>>, // 🆕 อัปเดตเวลาได้
+    pub plan_finish_date: Option<DateTime<Utc>>, // 🆕 อัปเดตเวลาได้
+}
+
+#[derive(Deserialize, Debug)]
+pub struct AssignSubTaskMembersPayload {
+    pub assignee_ids: Vec<i32>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub struct SubTaskItem {
+    pub id: i32,
+    pub request_id: i32,
+    pub responsible_dept_id: i32,
+    pub department_name: Option<String>,
+    pub status_id: i32,
+    pub status_name: Option<String>,
+    pub status_variant: Option<String>,
+    pub status_color: Option<String>,
+    pub description: Option<String>,
+    pub assignees: Option<serde_json::Value>,
+    pub plan_start_date: Option<DateTime<Utc>>, // 🆕 แสดงวันที่
+    pub plan_finish_date: Option<DateTime<Utc>>, // 🆕 แสดงวันที่
+}
+
+// ==========================================
+// 🌟 โครงสร้างสำหรับ "ตรวจรับงาน"
 // ==========================================
 #[derive(Deserialize, Debug)]
 pub struct VerifyTaskPayload {
-    pub is_approved: bool, // true = ผ่าน (ปิดงาน), false = ไม่ผ่าน (ตีกลับ)
+    pub is_approved: bool,
     pub remark: Option<String>,
 }

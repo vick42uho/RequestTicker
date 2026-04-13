@@ -7,21 +7,19 @@ use validator::Validate;
 // 1. Models สำหรับส่งข้อมูลกลับให้ Frontend (Response)
 // ==========================================
 
-// โครงสร้างใหม่สำหรับ GET ข้อมูลแบบโชว์ชื่อสวยๆ
 #[derive(Serialize, FromRow)]
 pub struct RequestItem {
     pub id: i32,
     pub req_code: String,
     
-    // ข้อมูลผู้ร้องขอ
     pub requester_id: i32,
-    pub requester_name: Option<String>, // 🆕 ดึงมาจากการ JOIN ตาราง users
+    pub requester_name: Option<String>,
     
-    // ข้อมูลประเภทคำขอ (ประกอบร่างจาก 3 ตาราง)
     pub subject_id: i32,
-    pub subject_name: Option<String>,   // 🆕 ดึงจาก m_subjects
-    pub topic_name: Option<String>,     // 🆕 ดึงจาก m_topics
-    pub type_name: Option<String>,      // 🆕 ดึงจาก m_request_types
+    pub subject_name: Option<String>,
+    pub topic_name: Option<String>,
+    pub type_name: Option<String>,
+    pub responsible_dept_id: Option<i32>, // 🆕 เพิ่มฟิลด์แผนกที่รับผิดชอบงานหลัก
     
     pub phone_number: Option<String>,
     pub requirement: Option<String>,
@@ -35,10 +33,11 @@ pub struct RequestItem {
     
     pub request_date: DateTime<Utc>,
     pub recorded_by: i32,
-    pub recorded_by_name: Option<String>, // 🆕 ชื่อคนบันทึก
+    pub recorded_by_name: Option<String>,
 
-    pub assignees: Option<serde_json::Value>,  // 🆕 รายชื่อผู้รับผิดชอบ (JSON array)
+    pub assignees: Option<serde_json::Value>,
     pub approvals: Option<serde_json::Value>,
+    pub sub_tasks: Option<serde_json::Value>,
 
     pub plan_start_date: Option<DateTime<Utc>>,
     pub plan_finish_date: Option<DateTime<Utc>>,
@@ -46,12 +45,6 @@ pub struct RequestItem {
     pub actual_finish_date: Option<DateTime<Utc>>,
 }
 
-
-// ==========================================
-// 2. Models สำหรับรับข้อมูลจาก Frontend (Payload)
-// ==========================================
-
-// เพิ่ม Struct นี้เข้าไป
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct ApproverInput {
     pub approver_id: i32,
@@ -59,21 +52,16 @@ pub struct ApproverInput {
     pub approval_type: String, 
 }
 
-// อัปเดต CreateRequestPayload
 #[derive(serde::Deserialize, validator::Validate)]
 pub struct CreateRequestPayload {
     pub subject_id: i32,
     pub phone_number: String,
     pub requirement: Option<String>,
-    
     #[validate(length(min = 1, message = "กรุณาระบุรายละเอียด"))]
     pub description: String,
-    
-    // เปลี่ยนจาก pub approver_id: Option<i32> เป็น Array แบบนี้แทน 👇
     pub approvers: Option<Vec<ApproverInput>>, 
 }
 
-// ข้อมูลที่ Frontend ส่งมาตอน "แก้ไข" คำขอ (PUT)
 #[derive(Deserialize, Validate)]
 pub struct UpdateRequest {
     pub subject_id: i32,
@@ -83,11 +71,6 @@ pub struct UpdateRequest {
     pub description: String,
     pub approvers: Option<Vec<crate::request::models::ApproverInput>>,
 }
-
-
-// ==========================================
-// 3. Models สำหรับ Master Data
-// ==========================================
 
 #[derive(Serialize, FromRow)]
 pub struct MasterRequestType {
@@ -114,14 +97,11 @@ pub struct MasterSubject {
     pub requires_receiver_approval: bool,
 }
 
-// ข้อมูลสำหรับรับรายชื่อไฟล์ที่ต้องการลบ
 #[derive(Deserialize)]
 pub struct DeleteFilesPayload {
-    pub files_to_delete: Vec<String>, // ส่งมาเป็น Array เช่น ["uploads/file1.png", "uploads/file2.pdf"]
+    pub files_to_delete: Vec<String>,
 }
 
-
-// สำหรับส่งข้อมูลรายการที่รออนุมัติไปให้หน้ากระดาน
 #[derive(serde::Serialize, sqlx::FromRow)]
 pub struct PendingApprovalResponse {
     pub approval_id: i32,
@@ -135,7 +115,7 @@ pub struct PendingApprovalResponse {
     pub phone_number: Option<String>,
     pub file_url: Option<String>,
     pub requester_name: Option<String>,
-    pub requester_department: Option<String>, // 🌟 เพิ่มชื่อแผนกผู้แจ้ง
+    pub requester_department: Option<String>,
     pub approve_step: i32,
     pub status_id: i32,
     pub status_name: String,
@@ -145,23 +125,20 @@ pub struct PendingApprovalResponse {
     pub approvals: Option<serde_json::Value>,
 }
 
-// สำหรับรับข้อมูลตอนหัวหน้ากด "อนุมัติ" หรือ "ไม่อนุมัติ"
 #[derive(serde::Deserialize)]
 pub struct ApprovalActionPayload {
-    pub action: String, // ส่งมาเป็น "APPROVE" หรือ "REJECT"
+    pub action: String,
     pub comment: Option<String>,
     pub forward_to_id: Option<i32>,
 }
 
-// 1. เพิ่ม page และ limit ใน RequestFilter
 #[derive(Deserialize)]
 pub struct RequestFilter {
     pub filter: Option<String>,
-    pub page: Option<i64>,  // 🆕 หน้าที่เท่าไหร่ (ค่าเริ่มต้น 1)
-    pub limit: Option<i64>, // 🆕 ดึงกี่รายการ (ค่าเริ่มต้น 50)
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
 }
 
-// 2. 🌟 โครงสร้างใหม่สำหรับส่งข้อมูลแบบมี Pagination
 #[derive(Serialize)]
 pub struct PaginatedResponse<T> {
     pub data: Vec<T>,
@@ -182,7 +159,6 @@ pub struct ApprovalPaginatedResponse<T> {
     pub waiting_count: i64,
 }
 
-// 🌟 โครงสร้างสำหรับสรุปสถิติหน้า Dashboard
 #[derive(Serialize)]
 pub struct DashboardStats {
     pub pending: i64,
@@ -191,12 +167,9 @@ pub struct DashboardStats {
     pub completed_today: i64,
 }
 
-// 🌟 โครงสร้างสำหรับข้อมูลกราฟรายวัน
 #[derive(Serialize, sqlx::FromRow)]
 pub struct DailyStat {
     pub date: String,
     pub requests: i64,
     pub completed: i64,
 }
-
-

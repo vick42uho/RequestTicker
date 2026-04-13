@@ -26,6 +26,19 @@ export interface RequestItem {
   plan_finish_date?: string;
   actual_start_date?: string;
   actual_finish_date?: string;
+  sub_tasks?: SubTaskItem[];
+}
+
+export interface SubTaskItem {
+  id: number;
+  request_id: number;
+  responsible_dept_id: number;
+  department_name?: string;
+  status_id: number;
+  status_name?: string;
+  status_variant?: string;
+  status_color?: string;
+  description?: string;
 }
 
 export interface PaginatedResponse<T> {

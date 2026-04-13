@@ -5,7 +5,7 @@ use axum::{
 };
 use sqlx::PgPool;
 
-use super::handlers::{create_department, delete_department, get_departments, update_department};
+use super::handlers::{create_department, delete_department, get_departments, update_department, get_department_agents};
 use crate::middleware::auth;
 
 pub fn create_router(pool: PgPool) -> Router {
@@ -13,6 +13,7 @@ pub fn create_router(pool: PgPool) -> Router {
     let admin_routes = Router::new()
         .route("/", post(create_department))
         .route("/:id", put(update_department).delete(delete_department))
+        .route("/:id/agents", get(get_department_agents)) // 🌟 เพิ่มบรรทัดนี้
         .route_layer(axum_middleware::from_fn(auth)); // <- ยามเฝ้าเฉพาะกลุ่มนี้!
 
     // 2. นำมารวมกับ API Public

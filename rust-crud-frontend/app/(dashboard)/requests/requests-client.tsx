@@ -210,6 +210,18 @@ export default function RequestsContent() {
     }
   };
 
+  const refreshRequestData = async () => {
+    if (!selectedRequest) return;
+    try {
+      const updatedReq = await fetchApi<HelpdeskRequest>(`/requests/${selectedRequest.id}`);
+      setSelectedRequest(updatedReq);
+      // อัปเดตในรายการหลักด้วยเพื่อให้ข้อมูลตรงกัน
+      setRequests(prev => prev.map(r => r.id === updatedReq.id ? updatedReq : r));
+    } catch (error) {
+      console.error("Failed to refresh request data");
+    }
+  };
+
   useEffect(() => {
     loadRequests();
   }, [currentFilter, currentPage]);
@@ -583,6 +595,7 @@ export default function RequestsContent() {
         isOpen={isDialogOpen}
         onClose={setIsDialogOpen}
         request={selectedRequest}
+        onRefresh={refreshRequestData}
         footerActions={
           <div className="flex w-full items-center justify-between">
             {/* ฝั่งซ้าย: โชว์ปุ่มตรวจรับเฉพาะงานที่รอการตรวจรับ (สถานะ 9) */}

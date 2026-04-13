@@ -126,3 +126,23 @@ CREATE TABLE request_approvals (
     action_date TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- sub_task_assignees: รายชื่อผู้รับผิดชอบงานย่อย
+CREATE TABLE sub_task_assignees (
+    id SERIAL PRIMARY KEY,
+    sub_task_id INTEGER NOT NULL REFERENCES request_sub_tasks(id) ON DELETE CASCADE,
+    assignee_id INTEGER NOT NULL REFERENCES users(id),
+    assigned_by INTEGER NOT NULL REFERENCES users(id),
+    assigned_date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(sub_task_id, assignee_id)
+);
+
+CREATE TABLE request_sub_tasks (
+    id SERIAL PRIMARY KEY,
+    request_id INTEGER REFERENCES requests(id),
+    responsible_dept_id INTEGER REFERENCES m_departments(id),
+    status_id INTEGER DEFAULT 1,
+    description TEXT,
+    plan_start_date TIMESTAMPTZ,
+    plan_finish_date TIMESTAMPTZ
+);

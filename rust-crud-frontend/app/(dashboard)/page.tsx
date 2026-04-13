@@ -27,6 +27,17 @@ export default function DashboardPage() {
     setIsSheetOpen(true)
   }
 
+  const refreshRequestData = async () => {
+    if (!selectedRequest) return;
+    try {
+      const updatedReq = await fetchApi<RequestItem>(`/requests/${selectedRequest.id}`);
+      setSelectedRequest(updatedReq);
+      setTasks(prev => prev.map(t => t.id === updatedReq.id ? updatedReq : t));
+    } catch (error) {
+      console.error("Failed to refresh request data");
+    }
+  };
+
   useEffect(() => {
     async function loadStats() {
       try {
@@ -95,6 +106,7 @@ export default function DashboardPage() {
         isOpen={isSheetOpen}
         onClose={setIsSheetOpen}
         request={selectedRequest}
+        onRefresh={refreshRequestData}
       />
     </div>
   )
