@@ -52,7 +52,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // 🌟 กรองเมนูแบบ Dynamic
     const filtered = MENU_CONFIG.filter(item => {
       if (item.url === "/approvals") return isManager;
-      if (item.url === "/tasks") return isAgent;
+      if (item.url === "/tasks") return isAgent || isManager;
       if (item.url === "#" || item.url === "/admin") return isAdmin;
       return true;
     }).map(item => ({
@@ -74,7 +74,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton asChild className="p-1.5">
               <Link href="/">
                 <IconInnerShadowTop className="size-5" />
-                <span className="text-base font-semibold">Helpdesk</span>
+                <span className="text-base font-semibold">System Requests</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

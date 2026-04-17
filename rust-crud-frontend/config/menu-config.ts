@@ -48,6 +48,10 @@ export const MENU_CONFIG: MenuItem[] = [
         url: "/admin",
       },
       {
+        title: "จัดการให้คะแนน",
+        url: "/admin/rating",
+      },
+      {
         title: "ตั้งค่าข้อมูลพื้นฐาน",
         url: "/admin/master-data",
       },

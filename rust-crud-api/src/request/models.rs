@@ -137,6 +137,12 @@ pub struct RequestFilter {
     pub filter: Option<String>,
     pub page: Option<i64>,
     pub limit: Option<i64>,
+    pub search: Option<String>,    // 🆕 ค้นหาจากรหัส หรือรายละเอียด
+    pub status_ids: Option<String>, // 🆕 กรองตามสถานะ (เลือกได้หลายอัน ส่งมาเป็น 1,2,3)
+    pub type_ids: Option<String>,   // 🆕 กรองตามประเภทงาน (เลือกได้หลายอัน ส่งมาเป็น 1,2,3)
+    pub requester_name: Option<String>, // 🆕 กรองตามชื่อผู้แจ้ง
+    pub start_date: Option<String>, // 🆕 กรองจากวันที่เริ่ม
+    pub end_date: Option<String>,   // 🆕 กรองถึงวันที่
 }
 
 #[derive(Serialize)]

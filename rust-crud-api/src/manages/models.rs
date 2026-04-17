@@ -37,9 +37,9 @@ pub struct SubjectPayload {
 // ==========================================
 // 🟨 4. รับข้อมูลสร้าง/แก้ไข แผนก (Departments)
 // ==========================================
-// Struct สำหรับตอนรับข้อมูล POST/PUT
 #[derive(Deserialize, Validate)]
 pub struct DepartmentPayload {
+    pub id: Option<i32>, // 🆕 เพิ่ม ID เพื่อให้รองรับการ Import แบบ Update
     #[validate(length(min = 1, message = "กรุณากรอกชื่อแผนก"))]
     pub name: String,
 }
@@ -99,4 +99,15 @@ pub struct UserPayload {
     pub position: Option<String>,
     pub phone_number: Option<String>,
     pub is_active: bool,
+}
+
+// ==========================================
+// 🆕 5. Master Status
+// ==========================================
+#[derive(Serialize, sqlx::FromRow)]
+pub struct StatusResponse {
+    pub id: i32,
+    pub name_th: String,
+    pub badge_variant: Option<String>,
+    pub color_class: Option<String>,
 }

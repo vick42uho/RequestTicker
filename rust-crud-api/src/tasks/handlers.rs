@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, QueryBuilder};
 
 use super::models::{AcceptTaskPayload, CursorFilter, CursorPaginatedResponse, UpdateAssigneesPayload, StartTaskPayload, CloseTaskPayload, VerifyTaskPayload, SubTaskItem, CreateSubTasksPayload, UpdateSubTaskStatusPayload, AssignSubTaskMembersPayload};
 use crate::error::ApiError;
@@ -99,12 +99,7 @@ pub async fn get_dept_tasks(
         ApiError::BadRequest("ไม่พบข้อมูลแผนกใน Token ของคุณ".to_string())
     )?; 
 
-    let cursor_condition = match filter.cursor {
-        Some(c) => format!("AND r.id < {}", c),
-        None => "".to_string(),
-    };
-
-    let query = format!(
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         r#"
         SELECT 
             r.id, r.req_code, r.requester_id, u1.name AS requester_name,
@@ -115,7 +110,7 @@ pub async fn get_dept_tasks(
             r.request_date, r.recorded_by, u3.name AS recorded_by_name,
             r.plan_start_date, r.plan_finish_date, r.actual_start_date, r.actual_finish_date,
             (SELECT COALESCE(json_agg(json_build_object('id', u4.id, 'name', u4.name, 'position', u4.position, 'email', u4.email, 'phone_number', u4.phone_number)), '[]') FROM request_assignees ra2 LEFT JOIN users u4 ON ra2.assignee_id = u4.id WHERE ra2.request_id = r.id) AS assignees,
-            (SELECT COALESCE(json_agg(json_build_object('step', ra.approve_step, 'approver_id', ra.approver_id, 'approver_name', u2.name, 'approval_type', ra.approval_type, 'status_name', ams.name_th, 'comment', ra.comment, 'action_date', ra.action_date) ORDER BY ra.approve_step ASC), '[]') FROM request_approvals ra LEFT JOIN users u2 ON ra.approver_id = u2.id LEFT JOIN m_status ams ON ra.status_id = ams.id WHERE ra.request_id = r.id) AS approvals
+            (SELECT COALESCE(json_agg(json_build_object('step', ra.approve_step, 'approver_id', ra.approver_id, 'approver_name', u2.name, 'approval_type', ra.approval_type, 'status_id', ra.status_id, 'status_name', ams.name_th, 'comment', ra.comment, 'action_date', ra.action_date) ORDER BY ra.action_date ASC, ra.id ASC), '[]') FROM request_approvals ra LEFT JOIN users u2 ON ra.approver_id = u2.id LEFT JOIN m_status ams ON ra.status_id = ams.id WHERE ra.request_id = r.id) AS approvals
         FROM requests r
         LEFT JOIN m_status ms ON r.status_id = ms.id
         LEFT JOIN users u1 ON r.requester_id = u1.id
@@ -125,15 +120,58 @@ pub async fn get_dept_tasks(
         LEFT JOIN users u3 ON r.recorded_by = u3.id
         WHERE r.is_deleted = FALSE 
         AND (
-            rt.responsible_dept_id = $1 
-            OR EXISTS (SELECT 1 FROM request_sub_tasks rst WHERE rst.request_id = r.id AND rst.responsible_dept_id = $1)
-        )
-        {} ORDER BY r.id DESC LIMIT $2"#,
-        cursor_condition
+            rt.responsible_dept_id = "#
     );
+    query_builder.push_bind(department_id);
+    query_builder.push(r#" OR EXISTS (SELECT 1 FROM request_sub_tasks rst WHERE rst.request_id = r.id AND rst.responsible_dept_id = "#);
+    query_builder.push_bind(department_id);
+    query_builder.push("))");
 
-    let mut requests = sqlx::query_as::<_, RequestItem>(&query)
-        .bind(department_id).bind(limit + 1).fetch_all(&pool).await
+    if let Some(cursor) = filter.cursor {
+        query_builder.push(" AND r.id < ");
+        query_builder.push_bind(cursor);
+    }
+
+    // 🔍 Dynamic Filters
+    if let Some(search) = &filter.search {
+        if !search.is_empty() {
+            let search_pattern = format!("%{}%", search.to_lowercase());
+            query_builder.push(" AND (LOWER(r.req_code) LIKE ");
+            query_builder.push_bind(search_pattern.clone());
+            query_builder.push(" OR LOWER(r.description) LIKE ");
+            query_builder.push_bind(search_pattern.clone());
+            query_builder.push(" OR LOWER(s.name) LIKE ");
+            query_builder.push_bind(search_pattern.clone());
+            query_builder.push(")");
+        }
+    }
+
+    if let Some(status_id) = filter.status_id {
+        query_builder.push(" AND r.status_id = ");
+        query_builder.push_bind(status_id);
+    }
+
+    if let Some(start_date) = &filter.start_date {
+        if !start_date.is_empty() {
+            query_builder.push(" AND r.request_date >= ");
+            query_builder.push_bind(start_date);
+            query_builder.push("::TIMESTAMPTZ"); // 🌟 เพิ่ม Casting
+        }
+    }
+
+    if let Some(end_date) = &filter.end_date {
+        if !end_date.is_empty() {
+            let end_date_full = format!("{} 23:59:59", end_date);
+            query_builder.push(" AND r.request_date <= ");
+            query_builder.push_bind(end_date_full);
+            query_builder.push("::TIMESTAMPTZ"); // 🌟 เพิ่ม Casting
+        }
+    }
+
+    query_builder.push(" ORDER BY r.id DESC LIMIT ");
+    query_builder.push_bind(limit + 1);
+
+    let mut requests = query_builder.build_query_as::<RequestItem>().fetch_all(&pool).await
         .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
 
     for req in &mut requests {
@@ -169,12 +207,8 @@ pub async fn get_my_assigned_tasks(
 ) -> Result<Json<CursorPaginatedResponse<RequestItem>>, ApiError> {
     let limit = filter.limit.unwrap_or(10);
     let user_id: i32 = claims.sub.parse().unwrap_or(0);
-    let cursor_condition = match filter.cursor {
-        Some(c) => format!("AND r.id < {}", c),
-        None => "".to_string(),
-    };
-
-    let query = format!(
+    
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
         r#"
         SELECT 
             r.id, r.req_code, r.requester_id, u1.name AS requester_name,
@@ -185,7 +219,7 @@ pub async fn get_my_assigned_tasks(
             r.request_date, r.recorded_by, u3.name AS recorded_by_name,
             r.plan_start_date, r.plan_finish_date, r.actual_start_date, r.actual_finish_date,
             (SELECT COALESCE(json_agg(json_build_object('id', u4.id, 'name', u4.name, 'position', u4.position, 'email', u4.email, 'phone_number', u4.phone_number)), '[]') FROM request_assignees ra2 LEFT JOIN users u4 ON ra2.assignee_id = u4.id WHERE ra2.request_id = r.id) AS assignees,
-            (SELECT COALESCE(json_agg(json_build_object('step', ra.approve_step, 'approver_id', ra.approver_id, 'approver_name', u2.name, 'approval_type', ra.approval_type, 'status_name', ams.name_th, 'comment', ra.comment, 'action_date', ra.action_date) ORDER BY ra.approve_step ASC), '[]') FROM request_approvals ra LEFT JOIN users u2 ON ra.approver_id = u2.id LEFT JOIN m_status ams ON ra.status_id = ams.id WHERE ra.request_id = r.id) AS approvals
+            (SELECT COALESCE(json_agg(json_build_object('step', ra.approve_step, 'approver_id', ra.approver_id, 'approver_name', u2.name, 'approval_type', ra.approval_type, 'status_id', ra.status_id, 'status_name', ams.name_th, 'comment', ra.comment, 'action_date', ra.action_date) ORDER BY ra.action_date ASC, ra.id ASC), '[]') FROM request_approvals ra LEFT JOIN users u2 ON ra.approver_id = u2.id LEFT JOIN m_status ams ON ra.status_id = ams.id WHERE ra.request_id = r.id) AS approvals
         FROM requests r
         LEFT JOIN m_status ms ON r.status_id = ms.id
         LEFT JOIN users u1 ON r.requester_id = u1.id
@@ -195,15 +229,58 @@ pub async fn get_my_assigned_tasks(
         LEFT JOIN users u3 ON r.recorded_by = u3.id
         WHERE r.is_deleted = FALSE 
         AND (
-            EXISTS (SELECT 1 FROM request_assignees rasg WHERE rasg.request_id = r.id AND rasg.assignee_id = $1)
-            OR EXISTS (SELECT 1 FROM request_sub_tasks rst JOIN sub_task_assignees sta ON rst.id = sta.sub_task_id WHERE rst.request_id = r.id AND sta.assignee_id = $1)
-        )
-        {} ORDER BY r.id DESC LIMIT $2"#, 
-        cursor_condition
+            EXISTS (SELECT 1 FROM request_assignees rasg WHERE rasg.request_id = r.id AND rasg.assignee_id = "#
     );
+    query_builder.push_bind(user_id);
+    query_builder.push(r#") OR EXISTS (SELECT 1 FROM request_sub_tasks rst JOIN sub_task_assignees sta ON rst.id = sta.sub_task_id WHERE rst.request_id = r.id AND sta.assignee_id = "#);
+    query_builder.push_bind(user_id);
+    query_builder.push("))");
 
-    let mut requests = sqlx::query_as::<_, RequestItem>(&query)
-        .bind(user_id).bind(limit + 1).fetch_all(&pool).await
+    if let Some(cursor) = filter.cursor {
+        query_builder.push(" AND r.id < ");
+        query_builder.push_bind(cursor);
+    }
+
+    // 🔍 Dynamic Filters
+    if let Some(search) = &filter.search {
+        if !search.is_empty() {
+            let search_pattern = format!("%{}%", search.to_lowercase());
+            query_builder.push(" AND (LOWER(r.req_code) LIKE ");
+            query_builder.push_bind(search_pattern.clone());
+            query_builder.push(" OR LOWER(r.description) LIKE ");
+            query_builder.push_bind(search_pattern.clone());
+            query_builder.push(" OR LOWER(s.name) LIKE ");
+            query_builder.push_bind(search_pattern.clone());
+            query_builder.push(")");
+        }
+    }
+
+    if let Some(status_id) = filter.status_id {
+        query_builder.push(" AND r.status_id = ");
+        query_builder.push_bind(status_id);
+    }
+
+    if let Some(start_date) = &filter.start_date {
+        if !start_date.is_empty() {
+            query_builder.push(" AND r.request_date >= ");
+            query_builder.push_bind(start_date);
+            query_builder.push("::TIMESTAMPTZ"); // 🌟 เพิ่ม Casting
+        }
+    }
+
+    if let Some(end_date) = &filter.end_date {
+        if !end_date.is_empty() {
+            let end_date_full = format!("{} 23:59:59", end_date);
+            query_builder.push(" AND r.request_date <= ");
+            query_builder.push_bind(end_date_full);
+            query_builder.push("::TIMESTAMPTZ"); // 🌟 เพิ่ม Casting
+        }
+    }
+
+    query_builder.push(" ORDER BY r.id DESC LIMIT ");
+    query_builder.push_bind(limit + 1);
+
+    let mut requests = query_builder.build_query_as::<RequestItem>().fetch_all(&pool).await
         .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
 
     for req in &mut requests {
@@ -258,10 +335,29 @@ pub async fn update_assignees(
     Json(payload): Json<UpdateAssigneesPayload>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
     // 🛡️ [PERMISSION] เฉพาะ Admin หรือแผนกรับผิดชอบหลัก
-    let req_data = sqlx::query!(r#"SELECT rt.responsible_dept_id FROM requests r JOIN m_subjects s ON r.subject_id = s.id JOIN m_topics t ON s.topic_id = t.id JOIN m_request_types rt ON t.type_id = rt.id WHERE r.id = $1"#, request_id).fetch_one(&pool).await?;
+    let req_data = sqlx::query!(
+        r#"
+        SELECT r.status_id, rt.responsible_dept_id 
+        FROM requests r 
+        JOIN m_subjects s ON r.subject_id = s.id 
+        JOIN m_topics t ON s.topic_id = t.id 
+        JOIN m_request_types rt ON t.type_id = rt.id 
+        WHERE r.id = $1
+        "#, 
+        request_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|_| ApiError::NotFound("ไม่พบข้อมูลใบงาน".to_string()))?;
+
     let user_dept_id = claims.department_id.unwrap_or(0);
     if claims.role != "admin" && req_data.responsible_dept_id != Some(user_dept_id) {
         return Err(ApiError::Forbidden("ไม่มีสิทธิ์จัดการผู้รับผิดชอบงานหลัก".to_string()));
+    }
+
+    let current_status = req_data.status_id.unwrap_or(0);
+    if [4, 5].contains(&current_status) {
+        return Err(ApiError::BadRequest("ไม่สามารถแก้ไขผู้รับผิดชอบได้ เนื่องจากใบงานถูกปิดหรือยกเลิกแล้ว".to_string()));
     }
 
     let mut tx = pool.begin().await?;
@@ -280,10 +376,32 @@ pub async fn start_task(
     Json(payload): Json<StartTaskPayload>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
     // 🛡️ [PERMISSION]
-    let req_data = sqlx::query!(r#"SELECT rt.responsible_dept_id FROM requests r JOIN m_subjects s ON r.subject_id = s.id JOIN m_topics t ON s.topic_id = t.id JOIN m_request_types rt ON t.type_id = rt.id WHERE r.id = $1"#, request_id).fetch_one(&pool).await?;
+    let req_data = sqlx::query!(
+        r#"
+        SELECT r.status_id, rt.responsible_dept_id 
+        FROM requests r 
+        JOIN m_subjects s ON r.subject_id = s.id 
+        JOIN m_topics t ON s.topic_id = t.id 
+        JOIN m_request_types rt ON t.type_id = rt.id 
+        WHERE r.id = $1
+        "#, 
+        request_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|_| ApiError::NotFound("ไม่พบข้อมูลใบงาน".to_string()))?;
+
     let user_dept_id = claims.department_id.unwrap_or(0);
     if claims.role != "admin" && req_data.responsible_dept_id != Some(user_dept_id) {
         return Err(ApiError::Forbidden("คุณไม่มีสิทธิ์เริ่มงานนี้ เฉพาะแผนกที่รับผิดชอบหลักเท่านั้น".to_string()));
+    }
+
+    let current_status = req_data.status_id.unwrap_or(0);
+    if [4, 5].contains(&current_status) {
+        return Err(ApiError::BadRequest("ไม่สามารถเริ่มงานได้ เนื่องจากใบงานถูกปิดหรือยกเลิกแล้ว".to_string()));
+    }
+    if [2, 7, 8, 10].contains(&current_status) {
+        return Err(ApiError::BadRequest("ไม่สามารถเริ่มงานได้ เนื่องจากใบงานยังอยู่ระหว่างขั้นตอนการอนุมัติ".to_string()));
     }
 
     let current_user_id: i32 = claims.sub.parse().unwrap_or(0);
@@ -306,10 +424,32 @@ pub async fn close_task(
     Json(payload): Json<CloseTaskPayload>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
     // 🛡️ [PERMISSION]
-    let req_data = sqlx::query!(r#"SELECT rt.responsible_dept_id FROM requests r JOIN m_subjects s ON r.subject_id = s.id JOIN m_topics t ON s.topic_id = t.id JOIN m_request_types rt ON t.type_id = rt.id WHERE r.id = $1"#, request_id).fetch_one(&pool).await?;
+    let req_data = sqlx::query!(
+        r#"
+        SELECT r.status_id, rt.responsible_dept_id 
+        FROM requests r 
+        JOIN m_subjects s ON r.subject_id = s.id 
+        JOIN m_topics t ON s.topic_id = t.id 
+        JOIN m_request_types rt ON t.type_id = rt.id 
+        WHERE r.id = $1
+        "#, 
+        request_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|_| ApiError::NotFound("ไม่พบข้อมูลใบงาน".to_string()))?;
+
     let user_dept_id = claims.department_id.unwrap_or(0);
     if claims.role != "admin" && req_data.responsible_dept_id != Some(user_dept_id) {
         return Err(ApiError::Forbidden("คุณไม่มีสิทธิ์ปิดงานนี้ เฉพาะแผนกที่รับผิดชอบหลักเท่านั้น".to_string()));
+    }
+
+    let current_status = req_data.status_id.unwrap_or(0);
+    if current_status == 4 || current_status == 5 {
+        return Err(ApiError::BadRequest("ไม่สามารถปิดงานได้ เนื่องจากใบงานถูกปิดหรือยกเลิกแล้ว".to_string()));
+    }
+    if current_status != 3 {
+        return Err(ApiError::BadRequest("ไม่สามารถปิดงานได้ เนื่องจากใบงานยังไม่ได้เริ่มดำเนินการ".to_string()));
     }
 
     let current_user_id: i32 = claims.sub.parse().unwrap_or(0);
@@ -331,7 +471,23 @@ pub async fn verify_task(
     Path(request_id): Path<i32>,
     Json(payload): Json<VerifyTaskPayload>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    // 🛡️ [CHECK STATUS]
+    let req_data = sqlx::query!("SELECT status_id, requester_id FROM requests WHERE id = $1", request_id)
+        .fetch_one(&pool)
+        .await
+        .map_err(|_| ApiError::NotFound("ไม่พบข้อมูลใบงาน".to_string()))?;
+
+    let current_status = req_data.status_id.unwrap_or(0);
+    if current_status != 9 {
+        return Err(ApiError::BadRequest("ใบงานนี้ไม่ได้อยู่ในสถานะรอตรวจรับงาน".to_string()));
+    }
+
     let current_user_id: i32 = claims.sub.parse().unwrap_or(0);
+    // (Optional) เช็คสิทธิ์เฉพาะผู้แจ้ง (requester) หรือ Admin
+    if claims.role != "admin" && req_data.requester_id != current_user_id {
+        return Err(ApiError::Forbidden("เฉพาะผู้แจ้งงานเท่านั้นที่สามารถตรวจรับงานได้".to_string()));
+    }
+
     let new_status_id = if payload.is_approved { 4 } else { 3 };
     sqlx::query!("UPDATE requests SET status_id = $1 WHERE id = $2 AND is_deleted = FALSE", new_status_id, request_id).execute(&pool).await?;
 
@@ -349,6 +505,17 @@ pub async fn create_sub_tasks(
     Path(request_id): Path<i32>,
     Json(payload): Json<CreateSubTasksPayload>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
+    // 🛡️ [CHECK STATUS]
+    let req_data = sqlx::query!("SELECT status_id FROM requests WHERE id = $1", request_id)
+        .fetch_one(&pool)
+        .await
+        .map_err(|_| ApiError::NotFound("ไม่พบข้อมูลใบงาน".to_string()))?;
+
+    let current_status = req_data.status_id.unwrap_or(0);
+    if [4, 5].contains(&current_status) {
+        return Err(ApiError::BadRequest("ไม่สามารถสร้างงานย่อยได้ เนื่องจากใบงานหลักถูกปิดหรือยกเลิกแล้ว".to_string()));
+    }
+
     let current_user_id: i32 = claims.sub.parse().unwrap_or(0);
     let mut tx = pool.begin().await?;
     for st in payload.sub_tasks {

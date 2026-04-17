@@ -269,6 +269,7 @@ export default function UsersAdminPage() {
 
   const onSubmit = async (data: UserFormValues) => {
     try {
+      setIsLoading(true);
       const payload = {
         ...data,
         department_id: data.department_id ? parseInt(data.department_id) : null,
@@ -289,8 +290,10 @@ export default function UsersAdminPage() {
       }
       setIsDialogOpen(false);
       loadData();
-    } catch (error) {
-      toast.error("เกิดข้อผิดพลาดในการบันทึก");
+    } catch (error: any) {
+      toast.error(error.message || "เกิดข้อผิดพลาดในการบันทึก");
+    } finally {
+      setIsLoading(false);
     }
   };
 

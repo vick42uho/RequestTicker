@@ -3,7 +3,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -50,33 +50,9 @@ export function RequestHoverCard({ request, children }: RequestHoverCardProps) {
 
         {/* 🌟 พื้นที่สำหรับ Scroll (เหมือนต้นฉบับ) */}
         <ScrollArea className="h-72 w-full">
-          <div className="p-5 space-y-4 wrap-break-word">
+          <div className="p-5 space-y-4">
             {/* ข้อมูลผู้แจ้ง (เพิ่มความพรีเมียมด้วย Avatar และเบอร์โทรชัดๆ) */}
-            {/* <div className="flex items-center gap-4 bg-muted/30 p-3 rounded-lg border border-border/50">
-              <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
-                <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${request.requester_name}&backgroundColor=e2e8f0`} />
-                <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                  {request.requester_name?.substring(0, 2) || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-foreground">
-                  {request.requester_name || "ไม่ระบุชื่อผู้แจ้ง"}
-                </span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className="text-blue-600 dark:text-blue-400">
-                    <RiPhoneLine className="h-3.5 w-3.5" />
-                  </div>
-                  {request.phone_number ? (
-                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                      {request.phone_number}
-                    </span>
-                  ) : (
-                    <span className="text-xs italic text-muted-foreground">ไม่มีเบอร์ติดต่อ</span>
-                  )}
-                </div>
-              </div>
-            </div> */}
+            {/* ... rest of comments ... */}
 
             {/* รายละเอียดอาการ (เหมือนต้นฉบับ แต่ไม่มี line-clamp) */}
             <div>
@@ -84,7 +60,7 @@ export function RequestHoverCard({ request, children }: RequestHoverCardProps) {
                 <RiFileList3Line className="h-4 w-4 text-primary" />
                 รายละเอียดอาการ
               </h4>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed bg-background p-3 rounded-md border border-border/40">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words overflow-x-auto leading-relaxed bg-background p-3 rounded-md border border-border/40">
                 {request.description || "-"}
               </p>
             </div>
@@ -96,12 +72,13 @@ export function RequestHoverCard({ request, children }: RequestHoverCardProps) {
                   <RiInformationLine className="h-3.5 w-3.5" />{" "}
                   สิ่งที่ต้องการเพิ่มเติม
                 </h4>
-                <p className="text-sm text-amber-900 dark:text-amber-100 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-900/50 whitespace-pre-wrap leading-relaxed">
+                <p className="text-sm text-amber-900 dark:text-amber-100 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-900/50 whitespace-pre-wrap break-words overflow-x-auto leading-relaxed">
                   {request.requirement}
                 </p>
               </div>
             )}
           </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
         {/* Footer ของการ์ด */}

@@ -23,6 +23,10 @@ pub struct UpdateAssigneesPayload {
 pub struct CursorFilter {
     pub cursor: Option<i32>,
     pub limit: Option<i64>,
+    pub search: Option<String>,    // 🆕 ค้นหาจากรหัส หรือรายละเอียด
+    pub status_id: Option<i32>,   // 🆕 กรองตามสถานะ
+    pub start_date: Option<String>, // 🆕 กรองจากวันที่เริ่ม
+    pub end_date: Option<String>,   // 🆕 กรองถึงวันที่
 }
 
 #[derive(Serialize)]
@@ -51,8 +55,8 @@ pub struct CloseTaskPayload {
 pub struct SubTaskInput {
     pub responsible_dept_id: i32,
     pub description: Option<String>,
-    pub plan_start_date: Option<DateTime<Utc>>, // 🆕 เพิ่มวันที่เริ่ม
-    pub plan_finish_date: Option<DateTime<Utc>>, // 🆕 เพิ่มวันที่เสร็จ
+    pub plan_start_date: Option<DateTime<Utc>>,
+    pub plan_finish_date: Option<DateTime<Utc>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -64,8 +68,8 @@ pub struct CreateSubTasksPayload {
 pub struct UpdateSubTaskStatusPayload {
     pub status_id: i32,
     pub description: Option<String>,
-    pub plan_start_date: Option<DateTime<Utc>>, // 🆕 อัปเดตเวลาได้
-    pub plan_finish_date: Option<DateTime<Utc>>, // 🆕 อัปเดตเวลาได้
+    pub plan_start_date: Option<DateTime<Utc>>,
+    pub plan_finish_date: Option<DateTime<Utc>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -85,8 +89,8 @@ pub struct SubTaskItem {
     pub status_color: Option<String>,
     pub description: Option<String>,
     pub assignees: Option<serde_json::Value>,
-    pub plan_start_date: Option<DateTime<Utc>>, // 🆕 แสดงวันที่
-    pub plan_finish_date: Option<DateTime<Utc>>, // 🆕 แสดงวันที่
+    pub plan_start_date: Option<DateTime<Utc>>,
+    pub plan_finish_date: Option<DateTime<Utc>>,
 }
 
 // ==========================================

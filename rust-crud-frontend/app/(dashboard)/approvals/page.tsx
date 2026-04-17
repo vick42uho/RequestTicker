@@ -249,12 +249,11 @@ const ApprovalTimeline = ({ flow }: { flow: ApprovalStep[] }) => {
                                                 )}
 
                                                 {app.comment && (
-                                                    <div className="mt-2 text-xs bg-muted/40 p-2.5 rounded-md text-muted-foreground border-l-2 border-primary wrap-break-word">
-                                                        <span className="font-semibold text-foreground mr-1">หมายเหตุ:</span>
-                                                        {app.comment}
-                                                    </div>
-                                                )}
-                                            </div>
+                                                   <div className="mt-2 text-xs bg-muted/40 p-2.5 rounded-md text-muted-foreground border-l-2 border-primary break-words">
+                                                       <span className="font-semibold text-foreground mr-1">หมายเหตุ:</span>
+                                                       {app.comment}
+                                                   </div>
+                                                )}                                            </div>
                                         );
                                     })}
                                 </div>
@@ -467,7 +466,7 @@ function ApprovalsInnerContent() {
                 <TableHeader className="bg-muted/50">
                     <TableRow className="border-border">
                         <TableHead className="w-30">รหัสใบงาน</TableHead>
-                        <TableHead className="w-75">รายละเอียดปัญหา</TableHead>
+                        <TableHead className="min-w-[300px]">รายละเอียดปัญหา</TableHead>
                         <TableHead>ผู้แจ้ง</TableHead>
                         <TableHead>สถานะ</TableHead>
                         <TableHead className="text-right">วันที่แจ้ง</TableHead>
@@ -482,7 +481,7 @@ function ApprovalsInnerContent() {
                             <TableCell colSpan={6} className="h-64 text-center">
                                 <div className="flex flex-col items-center justify-center text-muted-foreground">
                                     <RiFileList3Line className="h-12 w-12 mb-2 opacity-30" />
-                                    <p>{isActionable ? "ตะกร้าว่างเปล่า ไม่มีรายการรออนุมัติ" : "ไม่มีใบงานที่กำลังรอคิว"}</p>
+                                    <p>{isActionable ? "ไม่มีรายการรออนุมัติ" : "ไม่มีรายการที่กำลังรอคิว"}</p>
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -497,7 +496,7 @@ function ApprovalsInnerContent() {
                                         {app.req_code} <RiExternalLinkLine className="h-3 w-3 opacity-50" />
                                     </button>
                                 </TableCell>
-                                <TableCell className="py-3">
+                                <TableCell className="whitespace-normal py-3">
                                     <RequestHoverCard request={app}>
                                         <div className="cursor-pointer truncate max-w-70 font-semibold group-hover:text-primary transition-colors">
                                             {app.subject_name || "ไม่ระบุหัวข้อ"}
@@ -735,7 +734,7 @@ function ApprovalsInnerContent() {
                                             รายละเอียดอาการ / ปัญหา
                                         </span>
                                     </div>
-                                    <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                                    <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words overflow-x-auto">
                                         {selectedApp.description || "ไม่มีรายละเอียดระบุไว้"}
                                     </div>
                                 </section>
@@ -749,7 +748,7 @@ function ApprovalsInnerContent() {
                                                 สิ่งที่ต้องการเพิ่มเติม
                                             </span>
                                         </div>
-                                        <div className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed whitespace-pre-wrap">
+                                        <div className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed whitespace-pre-wrap break-words overflow-x-auto">
                                             {selectedApp.requirement}
                                         </div>
                                     </section>

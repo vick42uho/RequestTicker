@@ -3,7 +3,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, QueryBuilder};
 use tokio::{fs::File, io::AsyncWriteExt};
 use uuid::Uuid;
 use validator::Validate;
@@ -335,19 +335,18 @@ pub async fn get_requests(
 
     let user_id: i32 = claims.sub.parse().unwrap_or(0);
     let role = claims.role.as_str();
-    
-    // 🌟 1. ดึง department_id ของผู้ใช้งานปัจจุบันมารอไว้เลย
     let user_info = sqlx::query!("SELECT department_id FROM users WHERE id = $1", user_id)
         .fetch_optional(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?;
     let department_id = user_info.and_then(|u| u.department_id).unwrap_or(0);
 
-    // ตั้งค่าตัวกรองและ Pagination
     let filter = params.filter.unwrap_or_else(|| "dept".to_string());
     let page = params.page.unwrap_or(1).max(1);
-    let limit = params.limit.unwrap_or(5).max(1).min(100); 
+    let limit = params.limit.unwrap_or(10).max(1).min(100); 
     let offset = (page - 1) * limit;
 
-let base_sql = r#"
+    // --- 1. สร้าง Query ดึงข้อมูล (Requests) ---
+    let mut query_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+        r#"
         SELECT 
             r.id, r.req_code, 
             r.requester_id, u1.name AS requester_name, 
@@ -356,12 +355,7 @@ let base_sql = r#"
             r.phone_number, r.requirement, r.description, r.file_url,  
             r.request_date, r.recorded_by, u3.name AS recorded_by_name,
             r.status_id, ms.name_th AS status_name, ms.badge_variant AS status_variant, ms.color_class AS status_color,
-            r.plan_start_date,
-            r.plan_finish_date,
-            r.actual_start_date,
-            r.actual_finish_date,
-
-            -- 🆕 งานย่อยและรายชื่อคนในงานย่อย
+            r.plan_start_date, r.plan_finish_date, r.actual_start_date, r.actual_finish_date,
             (
                 SELECT COALESCE(json_agg(
                     json_build_object(
@@ -371,8 +365,8 @@ let base_sql = r#"
                         'department_name', d2.name,
                         'status_id', st.status_id,
                         'status_name', ams2.name_th,
-                        'status_variant', ams2.badge_variant, -- 🌟 เพิ่ม
-                        'status_color', ams2.color_class,     -- 🌟 เพิ่ม
+                        'status_variant', ams2.badge_variant,
+                        'status_color', ams2.color_class,
                         'description', st.description,
                         'plan_start_date', st.plan_start_date,
                         'plan_finish_date', st.plan_finish_date,
@@ -396,40 +390,8 @@ let base_sql = r#"
                 LEFT JOIN m_status ams2 ON st.status_id = ams2.id
                 WHERE st.request_id = r.id
             ) AS sub_tasks,
-
-            (
-                SELECT COALESCE(json_agg(
-                    json_build_object(
-                        'id', u4.id,
-                        'name', u4.name,
-                        'position', u4.position,
-                        'email', u4.email,
-                        'phone_number', u4.phone_number
-                    )
-                ), '[]')
-                FROM request_assignees ra2
-                LEFT JOIN users u4 ON ra2.assignee_id = u4.id
-                WHERE ra2.request_id = r.id
-            ) AS assignees,
-
-            (
-                SELECT COALESCE(json_agg(
-                    json_build_object(
-                        'step', ra.approve_step,
-                        'approver_id', ra.approver_id,
-                        'approver_name', u2.name,
-                        'approval_type', ra.approval_type,
-                        'status_name', ams.name_th,
-                        'comment', ra.comment,
-                        'action_date', ra.action_date
-                    ) ORDER BY ra.approve_step ASC
-                ), '[]')
-                FROM request_approvals ra
-                LEFT JOIN users u2 ON ra.approver_id = u2.id
-                LEFT JOIN m_status ams ON ra.status_id = ams.id
-                WHERE ra.request_id = r.id
-            ) AS approvals
-
+            (SELECT COALESCE(json_agg(json_build_object('id', u4.id, 'name', u4.name, 'position', u4.position, 'email', u4.email, 'phone_number', u4.phone_number)), '[]') FROM request_assignees ra2 LEFT JOIN users u4 ON ra2.assignee_id = u4.id WHERE ra2.request_id = r.id) AS assignees,
+            (SELECT COALESCE(json_agg(json_build_object('step', ra.approve_step, 'approver_id', ra.approver_id, 'approver_name', u2.name, 'approval_type', ra.approval_type, 'status_id', ra.status_id, 'status_name', ams.name_th, 'comment', ra.comment, 'action_date', ra.action_date) ORDER BY ra.action_date ASC, ra.id ASC), '[]') FROM request_approvals ra LEFT JOIN users u2 ON ra.approver_id = u2.id LEFT JOIN m_status ams ON ra.status_id = ams.id WHERE ra.request_id = r.id) AS approvals
         FROM requests r
         LEFT JOIN m_status ms ON r.status_id = ms.id
         LEFT JOIN users u1 ON r.requester_id = u1.id
@@ -437,102 +399,139 @@ let base_sql = r#"
         LEFT JOIN m_topics t ON s.topic_id = t.id
         LEFT JOIN m_request_types rt ON t.type_id = rt.id
         LEFT JOIN users u3 ON r.recorded_by = u3.id
-    "#;
+        WHERE r.is_deleted = FALSE
+        "#
+    );
 
-    let total_records: i64;
-    let requests: Vec<RequestItem>;
+    // --- 2. สร้าง Query นับจำนวนทั้งหมด (Total Count) ---
+    let mut count_builder: QueryBuilder<Postgres> = QueryBuilder::new(
+        "SELECT COUNT(DISTINCT r.id) FROM requests r 
+         LEFT JOIN m_subjects s ON r.subject_id = s.id 
+         LEFT JOIN m_topics t ON s.topic_id = t.id 
+         LEFT JOIN m_request_types rt ON t.type_id = rt.id 
+         LEFT JOIN users u1 ON r.requester_id = u1.id
+         WHERE r.is_deleted = FALSE"
+    );
 
-    if role == "admin" && filter == "all" {
-        let count_query = "SELECT COUNT(*) FROM requests WHERE is_deleted = FALSE";
-        let count_result: (i64,) = sqlx::query_as(count_query).fetch_one(&pool).await.unwrap_or((0,));
-        total_records = count_result.0;
+    // 🛡️ Logic การเข้าถึงข้อมูล (เดิม)
+    let permission_sql = match (role, filter.as_str()) {
+        ("admin", "all") => "".to_string(),
+        (_, "me") => format!(" AND r.requester_id = {}", user_id),
+        (_, "dept_tasks") | ("agent", "all") | ("manager", "all") => 
+            format!(" AND (rt.responsible_dept_id = {} OR EXISTS (SELECT 1 FROM request_sub_tasks rst WHERE rst.request_id = r.id AND rst.responsible_dept_id = {}))", department_id, department_id),
+        (_, "my_tasks") => 
+            format!(" AND (EXISTS (SELECT 1 FROM request_assignees ra WHERE ra.request_id = r.id AND ra.assignee_id = {}) OR EXISTS (SELECT 1 FROM request_sub_tasks rst JOIN sub_task_assignees sta ON rst.id = sta.sub_task_id WHERE rst.request_id = r.id AND sta.assignee_id = {}))", user_id, user_id),
+        _ => format!(" AND u1.department_id = {}", department_id),
+    };
 
-        let query = format!("{} WHERE r.is_deleted = FALSE ORDER BY r.request_date DESC LIMIT $1 OFFSET $2", base_sql);
-        requests = sqlx::query_as::<_, RequestItem>(&query)
-            .bind(limit).bind(offset)
-            .fetch_all(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+    query_builder.push(&permission_sql);
+    count_builder.push(&permission_sql);
 
-    } else if (role == "agent" || role == "manager") && filter == "all" {
-        let count_query = "
-            SELECT COUNT(*) FROM requests r 
-            LEFT JOIN m_subjects s ON r.subject_id = s.id
-            LEFT JOIN m_topics t ON s.topic_id = t.id
-            LEFT JOIN m_request_types rt ON t.type_id = rt.id
-            WHERE r.is_deleted = FALSE 
-            AND (rt.responsible_dept_id = $1 OR EXISTS (SELECT 1 FROM request_sub_tasks rst WHERE rst.request_id = r.id AND rst.responsible_dept_id = $1))
-        ";
-        let count_result: (i64,) = sqlx::query_as(count_query).bind(department_id).fetch_one(&pool).await.unwrap_or((0,));
-        total_records = count_result.0;
+    // 🔍 3. เพิ่มตัวกรอง Dynamic (Search, Status, Date)
+    if let Some(search) = &params.search {
+        if !search.is_empty() {
+            let search_pattern = format!("%{}%", search.to_lowercase());
+            query_builder.push(" AND (LOWER(r.req_code) LIKE ");
+            query_builder.push_bind(search_pattern.clone());
+            query_builder.push(" OR LOWER(r.description) LIKE ");
+            query_builder.push_bind(search_pattern.clone());
+            query_builder.push(" OR LOWER(s.name) LIKE ");
+            query_builder.push_bind(search_pattern.clone());
+            query_builder.push(")");
 
-        let query = format!("{} WHERE r.is_deleted = FALSE AND (rt.responsible_dept_id = $1 OR EXISTS (SELECT 1 FROM request_sub_tasks rst WHERE rst.request_id = r.id AND rst.responsible_dept_id = $1)) ORDER BY r.request_date DESC LIMIT $2 OFFSET $3", base_sql);
-        requests = sqlx::query_as::<_, RequestItem>(&query)
-            .bind(department_id).bind(limit).bind(offset)
-            .fetch_all(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?;
-
-    } else if filter == "me" {
-        let count_query = "SELECT COUNT(*) FROM requests WHERE is_deleted = FALSE AND requester_id = $1";
-        let count_result: (i64,) = sqlx::query_as(count_query).bind(user_id).fetch_one(&pool).await.unwrap_or((0,));
-        total_records = count_result.0;
-
-        let query = format!("{} WHERE r.is_deleted = FALSE AND r.requester_id = $1 ORDER BY r.request_date DESC LIMIT $2 OFFSET $3", base_sql);
-        requests = sqlx::query_as::<_, RequestItem>(&query)
-            .bind(user_id).bind(limit).bind(offset)
-            .fetch_all(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?;
-
-    } else if filter == "dept_tasks" {
-        let count_query = "
-            SELECT COUNT(*) FROM requests r 
-            LEFT JOIN m_subjects s ON r.subject_id = s.id
-            LEFT JOIN m_topics t ON s.topic_id = t.id
-            LEFT JOIN m_request_types rt ON t.type_id = rt.id
-            WHERE r.is_deleted = FALSE 
-            AND (rt.responsible_dept_id = $1 OR EXISTS (SELECT 1 FROM request_sub_tasks rst WHERE rst.request_id = r.id AND rst.responsible_dept_id = $1))
-        ";
-        let count_result: (i64,) = sqlx::query_as(count_query).bind(department_id).fetch_one(&pool).await.unwrap_or((0,));
-        total_records = count_result.0;
-
-        let query = format!("{} WHERE r.is_deleted = FALSE AND (rt.responsible_dept_id = $1 OR EXISTS (SELECT 1 FROM request_sub_tasks rst WHERE rst.request_id = r.id AND rst.responsible_dept_id = $1)) ORDER BY r.request_date DESC LIMIT $2 OFFSET $3", base_sql);
-        requests = sqlx::query_as::<_, RequestItem>(&query)
-            .bind(department_id).bind(limit).bind(offset)
-            .fetch_all(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?;
-
-    } else if filter == "my_tasks" {
-        let count_query = "
-            SELECT COUNT(*) FROM requests r 
-            WHERE r.is_deleted = FALSE 
-            AND (
-                EXISTS (SELECT 1 FROM request_assignees ra WHERE ra.request_id = r.id AND ra.assignee_id = $1)
-                OR EXISTS (SELECT 1 FROM request_sub_tasks rst JOIN sub_task_assignees sta ON rst.id = sta.sub_task_id WHERE rst.request_id = r.id AND sta.assignee_id = $1)
-            )
-        ";
-        let count_result: (i64,) = sqlx::query_as(count_query).bind(user_id).fetch_one(&pool).await.unwrap_or((0,));
-        total_records = count_result.0;
-
-        let query = format!("{} WHERE r.is_deleted = FALSE AND (EXISTS (SELECT 1 FROM request_assignees ra WHERE ra.request_id = r.id AND ra.assignee_id = $1) OR EXISTS (SELECT 1 FROM request_sub_tasks rst JOIN sub_task_assignees sta ON rst.id = sta.sub_task_id WHERE rst.request_id = r.id AND sta.assignee_id = $1)) ORDER BY r.request_date DESC LIMIT $2 OFFSET $3", base_sql);
-        requests = sqlx::query_as::<_, RequestItem>(&query)
-            .bind(user_id).bind(limit).bind(offset)
-            .fetch_all(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?;
-
-    } else {
-        let count_query = "
-            SELECT COUNT(*) FROM requests r 
-            LEFT JOIN users u1 ON r.requester_id = u1.id 
-            WHERE r.is_deleted = FALSE AND u1.department_id = $1
-        ";
-        let count_result: (i64,) = sqlx::query_as(count_query).bind(department_id).fetch_one(&pool).await.unwrap_or((0,));
-        total_records = count_result.0;
-
-        let query = format!("{} WHERE r.is_deleted = FALSE AND u1.department_id = $1 ORDER BY r.request_date DESC LIMIT $2 OFFSET $3", base_sql);
-        requests = sqlx::query_as::<_, RequestItem>(&query)
-            .bind(department_id).bind(limit).bind(offset)
-            .fetch_all(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+            count_builder.push(" AND (LOWER(r.req_code) LIKE ");
+            count_builder.push_bind(search_pattern.clone());
+            count_builder.push(" OR LOWER(r.description) LIKE ");
+            count_builder.push_bind(search_pattern.clone());
+            count_builder.push(" OR LOWER(s.name) LIKE ");
+            count_builder.push_bind(search_pattern.clone());
+            count_builder.push(")");
+        }
     }
+
+    if let Some(status_ids_str) = &params.status_ids {
+        if !status_ids_str.is_empty() {
+            let ids: Vec<i32> = status_ids_str.split(',').filter_map(|s| s.parse().ok()).collect();
+            if !ids.is_empty() {
+                query_builder.push(" AND r.status_id = ANY(");
+                query_builder.push_bind(ids.clone());
+                query_builder.push(")");
+                
+                count_builder.push(" AND r.status_id = ANY(");
+                count_builder.push_bind(ids);
+                count_builder.push(")");
+            }
+        }
+    }
+
+    if let Some(type_ids_str) = &params.type_ids {
+        if !type_ids_str.is_empty() {
+            let ids: Vec<i32> = type_ids_str.split(',').filter_map(|s| s.parse().ok()).collect();
+            if !ids.is_empty() {
+                query_builder.push(" AND rt.id = ANY(");
+                query_builder.push_bind(ids.clone());
+                query_builder.push(")");
+
+                count_builder.push(" AND rt.id = ANY(");
+                count_builder.push_bind(ids);
+                count_builder.push(")");
+            }
+        }
+    }
+
+    if let Some(req_name) = &params.requester_name {
+        if !req_name.is_empty() {
+            let name_pattern = format!("%{}%", req_name.to_lowercase());
+            query_builder.push(" AND LOWER(u1.name) LIKE ");
+            query_builder.push_bind(name_pattern.clone());
+            count_builder.push(" AND LOWER(u1.name) LIKE ");
+            count_builder.push_bind(name_pattern);
+        }
+    }
+
+    if let Some(start_date) = &params.start_date {
+        if !start_date.is_empty() {
+            query_builder.push(" AND r.request_date >= ");
+            query_builder.push_bind(start_date);
+            query_builder.push("::TIMESTAMPTZ"); 
+            count_builder.push(" AND r.request_date >= ");
+            count_builder.push_bind(start_date);
+            count_builder.push("::TIMESTAMPTZ"); 
+        }
+    }
+
+    if let Some(end_date) = &params.end_date {
+        if !end_date.is_empty() {
+            let end_date_full = format!("{} 23:59:59", end_date);
+            query_builder.push(" AND r.request_date <= ");
+            query_builder.push_bind(end_date_full.clone());
+            query_builder.push("::TIMESTAMPTZ"); 
+            count_builder.push(" AND r.request_date <= ");
+            count_builder.push_bind(end_date_full);
+            count_builder.push("::TIMESTAMPTZ"); 
+        }
+    }
+
+    // 4. สั่งรัน Query นับจำนวน
+    let total_records: i64 = count_builder.build_query_as::<(i64,)>().fetch_one(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?.0;
+
+    // 5. สั่งรัน Query ดึงข้อมูลพร้อม Pagination
+    query_builder.push(" ORDER BY r.request_date DESC LIMIT ");
+    query_builder.push_bind(limit);
+    query_builder.push(" OFFSET ");
+    query_builder.push_bind(offset);
+
+    let requests = query_builder.build_query_as::<RequestItem>().fetch_all(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?;
 
     let total_pages = (total_records as f64 / limit as f64).ceil() as i64;
 
-    let response = PaginatedResponse { data: requests, total_records, total_pages, current_page: page, limit };
-
-    Ok(Json(response))
+    Ok(Json(PaginatedResponse {
+        data: requests,
+        total_records,
+        total_pages,
+        current_page: page,
+        limit,
+    }))
 }
 
 pub async fn get_request(
@@ -607,7 +606,7 @@ pub async fn upload_request_files(
     Path(id): Path<i32>,
     mut multipart: Multipart,
 ) -> Result<Json<RequestItem>, ApiError> {
-    let check = sqlx::query!("SELECT id FROM requests WHERE id = $1", id).fetch_optional(&pool).await.map_err(ApiError::from)?
+    let _check = sqlx::query!("SELECT id FROM requests WHERE id = $1", id).fetch_optional(&pool).await.map_err(ApiError::from)?
         .ok_or_else(|| ApiError::NotFound(format!("ไม่พบคำขอ ID: {}", id)))?;
 
     let mut uploaded_urls = Vec::new();
@@ -687,7 +686,7 @@ pub async fn get_pending_approvals(State(pool): State<PgPool>, Extension(claims)
     
     let total_records = if target_status == 2 { counts.0 } else { counts.1 };
     
-    let query = format!(r#"SELECT a.id as approval_id, r.id as request_id, r.req_code, r.phone_number, s.name as subject_name, t.name as topic_name, rt.name as type_name, r.requirement, r.description, r.file_url, u.name as requester_name, ud.name as requester_department, a.approve_step, r.request_date, a.status_id, ms.name_th AS status_name, ms.badge_variant AS status_variant, ms.color_class AS status_color, (SELECT COALESCE(json_agg(json_build_object('approve_step', ra2.approve_step, 'approver_name', COALESCE(u2.name, 'ไม่ระบุชื่อ'), 'status_name', ams.name_th, 'action_date', ra2.action_date, 'comment', ra2.comment) ORDER BY ra2.approve_step ASC), '[]') FROM request_approvals ra2 LEFT JOIN users u2 ON ra2.approver_id = u2.id LEFT JOIN m_status ams ON ra2.status_id = ams.id WHERE ra2.request_id = r.id) AS approvals {} AND a.status_id = $4 ORDER BY r.request_date ASC LIMIT $5 OFFSET $6"#, query_base);
+    let query = format!(r#"SELECT a.id as approval_id, r.id as request_id, r.req_code, r.phone_number, s.name as subject_name, t.name as topic_name, rt.name as type_name, r.requirement, r.description, r.file_url, u.name as requester_name, ud.name as requester_department, a.approve_step, r.request_date, a.status_id, ms.name_th AS status_name, ms.badge_variant AS status_variant, ms.color_class AS status_color, (SELECT COALESCE(json_agg(json_build_object('step', ra2.approve_step, 'approver_id', ra2.approver_id, 'approver_name', u2.name, 'approval_type', ra2.approval_type, 'status_id', ra2.status_id, 'status_name', ams.name_th, 'comment', ra2.comment, 'action_date', ra2.action_date) ORDER BY ra2.action_date ASC, ra2.id ASC), '[]') FROM request_approvals ra2 LEFT JOIN users u2 ON ra2.approver_id = u2.id LEFT JOIN m_status ams ON ra2.status_id = ams.id WHERE ra2.request_id = r.id) AS approvals {} AND a.status_id = $4 ORDER BY r.request_date ASC LIMIT $5 OFFSET $6"#, query_base);
     
     let list = sqlx::query_as::<_, PendingApprovalResponse>(&query).bind(approver_id).bind(&role).bind(department_id).bind(target_status).bind(limit).bind((page - 1) * limit).fetch_all(&pool).await?;
     
@@ -720,7 +719,7 @@ pub async fn process_approval(
             }
         }
     } else {
-        sqlx::query!("UPDATE request_approvals SET status_id = 6, comment = $1, action_date = NOW(), approver_id = $2 WHERE id = $3", payload.comment, current_user_id, approval_id).execute(&mut *tx).await?;
+        sqlx::query!("UPDATE request_approvals SET status_id = 5, comment = $1, action_date = NOW(), approver_id = $2 WHERE id = $3", payload.comment, current_user_id, approval_id).execute(&mut *tx).await?;
         sqlx::query!("UPDATE requests SET status_id = 5 WHERE id = $1", info.request_id).execute(&mut *tx).await?;
         sqlx::query!("UPDATE request_approvals SET status_id = 5, comment = 'ยกเลิกเนื่องจากสเตปก่อนหน้าไม่อนุมัติ' WHERE request_id = $1 AND approve_step > $2", info.request_id, info.approve_step).execute(&mut *tx).await?;
     }
@@ -780,7 +779,7 @@ async fn get_request_by_id(pool: &PgPool, id: i32) -> Result<RequestItem, ApiErr
                 WHERE st.request_id = r.id
             ) AS sub_tasks,
             (SELECT COALESCE(json_agg(json_build_object('id', u4.id, 'name', u4.name, 'position', u4.position, 'email', u4.email, 'phone_number', u4.phone_number)), '[]') FROM request_assignees ra2 LEFT JOIN users u4 ON ra2.assignee_id = u4.id WHERE ra2.request_id = r.id) AS assignees,
-            (SELECT COALESCE(json_agg(json_build_object('step', ra.approve_step, 'approver_id', ra.approver_id, 'approver_name', u2.name, 'approval_type', ra.approval_type, 'status_name', ams.name_th, 'comment', ra.comment, 'action_date', ra.action_date) ORDER BY ra.approve_step ASC), '[]') FROM request_approvals ra LEFT JOIN users u2 ON ra.approver_id = u2.id LEFT JOIN m_status ams ON ra.status_id = ams.id WHERE ra.request_id = r.id) AS approvals
+            (SELECT COALESCE(json_agg(json_build_object('step', ra.approve_step, 'approver_id', ra.approver_id, 'approver_name', u2.name, 'approval_type', ra.approval_type, 'status_id', ra.status_id, 'status_name', ams.name_th, 'comment', ra.comment, 'action_date', ra.action_date) ORDER BY ra.action_date ASC, ra.id ASC), '[]') FROM request_approvals ra LEFT JOIN users u2 ON ra.approver_id = u2.id LEFT JOIN m_status ams ON ra.status_id = ams.id WHERE ra.request_id = r.id) AS approvals
         FROM requests r
         LEFT JOIN m_status ms ON r.status_id = ms.id
         LEFT JOIN users u1 ON r.requester_id = u1.id

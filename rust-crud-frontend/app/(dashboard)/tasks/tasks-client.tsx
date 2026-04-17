@@ -81,6 +81,7 @@ import {
 } from "@/components/ui/command";
 import { RequestHoverCard } from "@/components/shared/RequestHoverCard";
 import { RequestDetailSheet } from "@/components/shared/RequestDetailSheet";
+import { TaskFilterBar, FilterValues } from "@/components/shared/TaskFilterBar";
 
 // --- Interfaces ---
 interface HelpdeskRequest {
@@ -100,7 +101,7 @@ interface HelpdeskRequest {
   status_color: string | null;
   assignees?: any[];
   sub_tasks?: any[]; 
-  responsible_dept_id?: number; // 🆕 เพิ่มเพื่อเช็คสิทธิ์ปิดงาน
+  responsible_dept_id?: number; 
   plan_start_date?: string;
   plan_finish_date?: string;
   actual_start_date?: string;
@@ -119,75 +120,87 @@ function TasksInnerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [currentUser, setCurrentUser] = useState<{ role: string; department_id: number | null } | null>(null);
+  // 🌟 อ่านค่าเบื้องต้นจาก localStorage ทันที (ถ้ามี) เพื่อลด render cycle
+  const [currentUser, setCurrentUser] = useState<{ role: string; department_id: number | null } | null>(() => {
+    if (typeof window !== "undefined") {
+      const userStr = localStorage.getItem("user");
+      return userStr ? JSON.parse(userStr) : null;
+    }
+    return null;
+  });
+
   const [tasks, setTasks] = useState<HelpdeskRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
 
-  const filterParam = searchParams.get("filter") || "dept_tasks";
+  // 🌟 อ่านค่าจาก URL โดยตรง (ไม่ใช้ state แยกเพื่อลด render cycle)
+  const currentFilter = searchParams.get("filter") || "dept_tasks";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
-  const [currentFilter, setCurrentFilter] = useState(filterParam);
+
+  // 🆕 Filter States
+  const [filters, setFilters] = useState<FilterValues>({
+    search: "",
+    status_ids: [],
+    type_ids: [],
+    requester_name: "",
+    start_date: "",
+    end_date: "",
+  });
 
   const [technicians, setTechnicians] = useState<any[]>([]);
 
   // States สำหรับ Dialog "จัดการ"
-  const [managePrompt, setManagePrompt] = useState<HelpdeskRequest | null>(
-    null
-  );
+  const [managePrompt, setManagePrompt] = useState<HelpdeskRequest | null>(null);
   const [planStartDate, setPlanStartDate] = useState("");
   const [planFinishDate, setPlanFinishDate] = useState("");
   const [actualFinishDate, setActualFinishDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // States สำหรับ Sheet "รายละเอียดใบงานพรีเมียม"
-  const [selectedRequest, setSelectedRequest] =
-    useState<HelpdeskRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<HelpdeskRequest | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   
-  useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      setCurrentUser(JSON.parse(userStr));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (filterParam !== currentFilter) setCurrentFilter(filterParam);
-  }, [filterParam, currentFilter]);
-
-  const loadTechnicians = useCallback(async () => {
-    if (!currentUser?.department_id) return;
+  // 🛡️ ปรับ loadTechnicians ให้รับ parameter เพื่อความเสถียร
+  const loadTechnicians = useCallback(async (deptId: number) => {
     try {
-      // 🎯 ดึงรายชื่อ Agent เฉพาะในแผนกตัวเอง
-      const data = await fetchApi<any[]>(`/departments/${currentUser.department_id}/agents`, {
+      const data = await fetchApi<any[]>(`/departments/${deptId}/agents`, {
         method: "GET",
       });
       setTechnicians(data || []);
     } catch (error) {
       console.error("Failed to load technicians");
     }
-  }, [currentUser]);
+  }, []);
 
   const loadTasks = useCallback(
-    async (showLoading = true) => {
+    async () => {
       try {
-        if (showLoading) setIsLoading(true);
+        setIsLoading(true);
 
-        const url = `/requests?filter=${currentFilter}&page=${currentPage}&limit=10`;
+        // 🔍 สร้าง URL พร้อม Query Params สำหรับตัวกรอง
+        let url = `/requests?filter=${currentFilter}&page=${currentPage}&limit=10`;
+        
+        if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`;
+        if (filters.status_ids && filters.status_ids.length > 0) url += `&status_ids=${filters.status_ids.join(",")}`;
+        if (filters.type_ids && filters.type_ids.length > 0) url += `&type_ids=${filters.type_ids.join(",")}`;
+        if (filters.requester_name) url += `&requester_name=${encodeURIComponent(filters.requester_name)}`;
+        if (filters.start_date) url += `&start_date=${filters.start_date}`;
+        if (filters.end_date) url += `&end_date=${filters.end_date}`;
+
         const res = await fetchApi<PaginatedResponse<HelpdeskRequest>>(url, { method: "GET" });
 
-        setTasks(res.data);
-        setTotalPages(res.total_pages);
-        setTotalRecords(res.total_records);
+        setTasks(res.data || []);
+        setTotalPages(res.total_pages || 1);
+        setTotalRecords(res.total_records || 0);
       } catch (error: any) {
         toast.error("ดึงข้อมูลไม่สำเร็จ");
       } finally {
-        if (showLoading) setIsLoading(false);
+        setIsLoading(false);
       }
     },
-    [currentFilter, currentPage]
+    [currentFilter, currentPage, filters]
   );
 
   const refreshRequestData = useCallback(async () => {
@@ -201,13 +214,19 @@ function TasksInnerContent() {
     }
   }, [selectedRequest]);
 
+  // 🔍 โหลดข้อมูลหลัก
   useEffect(() => {
     loadTasks();
-    if (currentUser) loadTechnicians();
-  }, [currentFilter, currentPage, loadTasks, loadTechnicians, currentUser]);
+  }, [loadTasks]);
+
+  // 🔍 โหลดรายชื่อช่าง (ทำแยกเมื่อ currentUser พร้อม)
+  useEffect(() => {
+    if (currentUser?.department_id) {
+      loadTechnicians(currentUser.department_id);
+    }
+  }, [currentUser?.department_id, loadTechnicians]);
 
   const handleTabChange = (value: string) => {
-    setCurrentFilter(value);
     router.push(`/tasks?filter=${value}&page=1`);
   };
 
@@ -318,7 +337,7 @@ function TasksInnerContent() {
       toast.success("บันทึกผู้รับผิดชอบอัตโนมัติ");
     } catch (error) {
       toast.error("บันทึกไม่สำเร็จ กรุณาลองใหม่");
-      loadTasks(false);
+      loadTasks();
     }
   };
 
@@ -364,7 +383,7 @@ function TasksInnerContent() {
       });
       toast.success("บันทึกรับงานและเริ่มดำเนินการเรียบร้อย!");
       setManagePrompt(null);
-      loadTasks(false);
+      loadTasks();
     } catch (error: any) {
       toast.error(error.message || "เกิดข้อผิดพลาดในการเริ่มงาน");
     } finally {
@@ -375,7 +394,6 @@ function TasksInnerContent() {
   const handleCloseTask = async () => {
     if (!managePrompt) return;
 
-    // 🛡️ [CHECKPOINT] ตรวจสอบงานย่อย (Sub-tasks) ก่อนปิดงานหลัก
     const incompleteSubTasks = managePrompt.sub_tasks?.filter(st => st.status_id !== 4) || [];
     if (incompleteSubTasks.length > 0) {
       const depts = incompleteSubTasks.map(st => st.department_name).join(", ");
@@ -398,7 +416,7 @@ function TasksInnerContent() {
       });
       toast.success("ปิดงานสำเร็จ! รอผู้แจ้งตรวจรับงาน");
       setManagePrompt(null);
-      loadTasks(false);
+      loadTasks();
     } catch (error: any) {
       toast.error(error.message || "เกิดข้อผิดพลาดในการปิดงาน");
     } finally {
@@ -407,36 +425,44 @@ function TasksInnerContent() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
+    <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full font-sans">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2 font-sans">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <RiToolsLine className="h-8 w-8 text-primary" />
             รายการปฏิบัติงาน
           </h1>
         </div>
       </div>
 
-      <Tabs
-        value={currentFilter}
-        onValueChange={handleTabChange}
-        className="w-full"
-      >
-        <TabsList className="mb-4">
-          <TabsTrigger value="dept_tasks" className="flex items-center gap-2">
-            <RiCommunityLine className="h-4 w-4" /> งานทั้งหมดของแผนก
-          </TabsTrigger>
-          <TabsTrigger value="my_tasks" className="flex items-center gap-2">
-            <RiUserLine className="h-4 w-4" /> งานของฉัน
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <Tabs
+            value={currentFilter}
+            onValueChange={handleTabChange}
+            className="w-full sm:w-auto"
+          >
+            <TabsList>
+              <TabsTrigger value="dept_tasks" className="flex items-center gap-2">
+                <RiCommunityLine className="h-4 w-4" /> งานทั้งหมดของแผนก
+              </TabsTrigger>
+              <TabsTrigger value="my_tasks" className="flex items-center gap-2">
+                <RiUserLine className="h-4 w-4" /> งานของฉัน
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-        <Card className="rounded-xl overflow-hidden border shadow-sm flex flex-col font-sans">
+          <div className="w-full sm:max-w-md lg:max-w-xl">
+            <TaskFilterBar onFilterChange={setFilters} />
+          </div>
+        </div>
+
+        <Card className="rounded-xl overflow-hidden border shadow-sm flex flex-col">
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead className="w-[150px]">รหัสใบงาน</TableHead>
-                <TableHead>รายละเอียด / ปัญหา</TableHead>
+                <TableHead className="min-w-[300px]">รายละเอียด / ปัญหา</TableHead>
                 <TableHead className="w-[180px]">ผู้รับผิดชอบ</TableHead>
                 <TableHead className="w-[160px]">กำหนดเสร็จ (SLA)</TableHead>
                 <TableHead className="w-[140px]">สถานะ</TableHead>
@@ -452,16 +478,12 @@ function TasksInnerContent() {
                 </TableRow>
               ) : tasks.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="h-40 text-center text-muted-foreground"
-                  >
+                  <TableCell colSpan={6} className="h-40 text-center text-muted-foreground">
                     ไม่มีข้อมูลใบงาน
                   </TableCell>
                 </TableRow>
               ) : (
                 tasks.map((req) => {
-                  // 🛡️ เช็คสิทธิ์การจัดการ: Admin หรือ Agent แผนกที่เป็นเจ้าของงานหลักเท่านั้น
                   const isMainDeptOwner = currentUser?.role === "admin" || currentUser?.department_id === req.responsible_dept_id;
 
                   return (
@@ -478,7 +500,7 @@ function TasksInnerContent() {
                         </div>
                       </TableCell>
 
-                      <TableCell className="max-w-87.5 py-3">
+                      <TableCell className="whitespace-normal py-3">
                         <div className="flex flex-col">
                           <RequestHoverCard request={req}>
                             <div className="flex items-center gap-1.5 cursor-pointer group max-w-[300px]">
@@ -506,10 +528,7 @@ function TasksInnerContent() {
                         </div>
                       </TableCell>
 
-                      <TableCell
-                        className="align-top"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <TableCell className="align-top" onClick={(e) => e.stopPropagation()}>
                         {isMainDeptOwner ? (
                           <Popover>
                             <PopoverTrigger asChild>
@@ -517,34 +536,23 @@ function TasksInnerContent() {
                                 <div className="flex -space-x-2 overflow-hidden">
                                   {req.assignees && req.assignees.length > 0 ? (
                                     req.assignees.map((assignee) => (
-                                      <HoverCard
-                                        key={assignee.id}
-                                        openDelay={200}
-                                      >
+                                      <HoverCard key={assignee.id} openDelay={200}>
                                         <HoverCardTrigger asChild>
                                           <Avatar className="w-8 h-8 border-2 border-background hover:z-10 transition-transform hover:scale-110">
-                                            <AvatarImage
-                                              src={`https://api.dicebear.com/7.x/initials/svg?seed=${assignee.name}&backgroundColor=e2e8f0`}
-                                            />
+                                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${assignee.name}&backgroundColor=e2e8f0`} />
                                             <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                              {assignee.name
-                                                .substring(0, 2)
-                                                .toUpperCase()}
+                                              {assignee.name.substring(0, 2).toUpperCase()}
                                             </AvatarFallback>
                                           </Avatar>
                                         </HoverCardTrigger>
-                                        <HoverCardContent
-                                          side="top"
-                                          className="w-auto p-3 text-sm shadow-md z-50"
-                                        >
+                                        <HoverCardContent side="top" className="w-auto p-3 text-sm shadow-md z-50">
                                           <div className="font-bold flex items-center gap-2">
                                             <RiUserLine className="w-4 h-4 text-muted-foreground" />
                                             {assignee.name}
                                           </div>
                                           <div className="text-muted-foreground flex items-center gap-2 mt-1.5">
                                             <RiPhoneLine className="w-4 h-4" />
-                                            {assignee.phone_number ||
-                                              "ไม่มีเบอร์โทรศัพท์"}
+                                            {assignee.phone_number || "ไม่มีเบอร์โทรศัพท์"}
                                           </div>
                                         </HoverCardContent>
                                       </HoverCard>
@@ -555,11 +563,8 @@ function TasksInnerContent() {
                                     </div>
                                   )}
                                 </div>
-                                {(!req.assignees ||
-                                  req.assignees.length === 0) && (
-                                  <span className="text-xs text-muted-foreground ml-1">
-                                    มอบหมาย...
-                                  </span>
+                                {(!req.assignees || req.assignees.length === 0) && (
+                                  <span className="text-xs text-muted-foreground ml-1">มอบหมาย...</span>
                                 )}
                                 {req.assignees && req.assignees.length > 0 && (
                                   <span className="text-xs text-muted-foreground ml-1 font-medium bg-secondary px-1.5 py-0.5 rounded-full">
@@ -568,73 +573,38 @@ function TasksInnerContent() {
                                 )}
                               </div>
                             </PopoverTrigger>
-
-                            <PopoverContent
-                              className="w-[260px] p-0"
-                              align="start"
-                            >
+                            <PopoverContent className="w-[260px] p-0" align="start">
                               <Command>
-                                <CommandInput
-                                  placeholder="ค้นหาชื่อผู้รับผิดชอบ..."
-                                  className="h-9"
-                                />
+                                <CommandInput placeholder="ค้นหาชื่อผู้รับผิดชอบ..." className="h-9" />
                                 <CommandList>
-                                  <CommandEmpty>
-                                    ไม่พบรายชื่อผู้รับผิดชอบ
-                                  </CommandEmpty>
+                                  <CommandEmpty>ไม่พบรายชื่อผู้รับผิดชอบ</CommandEmpty>
                                   <CommandGroup>
                                     {technicians.map((agent) => {
-                                      const isSelected = req.assignees?.some(
-                                        (a) => a.id === agent.id
-                                      );
+                                      const isSelected = req.assignees?.some((a) => a.id === agent.id);
                                       return (
                                         <CommandItem
                                           key={agent.id}
                                           onSelect={() => {
-                                            let newSelected;
-                                            if (isSelected) {
-                                              newSelected = (req.assignees || [])
-                                                .filter((a) => a.id !== agent.id)
-                                                .map((a) => a.id);
-                                            } else {
-                                              newSelected = [
-                                                ...(req.assignees || []).map(
-                                                  (a) => a.id
-                                                ),
-                                                agent.id,
-                                              ];
-                                            }
-                                            handleAssigneesChange(
-                                              req.id,
-                                              newSelected
-                                            );
+                                            let newSelected = isSelected 
+                                              ? (req.assignees || []).filter((a) => a.id !== agent.id).map(a => a.id)
+                                              : [...(req.assignees || []).map(a => a.id), agent.id];
+                                            handleAssigneesChange(req.id, newSelected);
                                           }}
                                           className="flex items-center justify-between cursor-pointer py-2"
                                         >
                                           <div className="flex items-center gap-2">
                                             <Avatar className="w-7 h-7">
-                                              <AvatarImage
-                                                src={`https://api.dicebear.com/7.x/initials/svg?seed=${agent.name}&backgroundColor=e2e8f0`}
-                                              />
-                                              <AvatarFallback className="text-[10px]">
-                                                {agent.name.substring(0, 2)}
-                                              </AvatarFallback>
+                                              <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${agent.name}&backgroundColor=e2e8f0`} />
+                                              <AvatarFallback className="text-[10px]">{agent.name.substring(0, 2)}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex flex-col">
-                                              <span className="text-sm font-medium">
-                                                {agent.name}
-                                              </span>
+                                              <span className="text-sm font-medium">{agent.name}</span>
                                               <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <RiPhoneLine className="w-3 h-3" />
-                                                {agent.phone_number || "-"}
+                                                <RiPhoneLine className="w-3 h-3" />{agent.phone_number || "-"}
                                               </span>
                                             </div>
                                           </div>
-                                          {isSelected && (
-                                            <div className="bg-primary/20 text-primary p-1 rounded-full">
-                                              <RiCheckLine className="w-3 h-3 font-bold" />
-                                            </div>
-                                          )}
+                                          {isSelected && <div className="bg-primary/20 text-primary p-1 rounded-full"><RiCheckLine className="w-3 h-3 font-bold" /></div>}
                                         </CommandItem>
                                       );
                                     })}
@@ -650,36 +620,22 @@ function TasksInnerContent() {
                                 <HoverCard key={assignee.id} openDelay={200}>
                                   <HoverCardTrigger asChild>
                                     <Avatar className="w-8 h-8 border-2 border-background hover:z-10 transition-transform hover:scale-110 cursor-default">
-                                      <AvatarImage
-                                        src={`https://api.dicebear.com/7.x/initials/svg?seed=${assignee.name}&backgroundColor=e2e8f0`}
-                                      />
-                                      <AvatarFallback className="text-xs">
-                                        {assignee.name
-                                          .substring(0, 2)
-                                          .toUpperCase()}
-                                      </AvatarFallback>
+                                      <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${assignee.name}&backgroundColor=e2e8f0`} />
+                                      <AvatarFallback className="text-xs">{assignee.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                                     </Avatar>
                                   </HoverCardTrigger>
-                                  <HoverCardContent
-                                    side="top"
-                                    className="w-auto p-3 text-sm shadow-md z-50"
-                                  >
+                                  <HoverCardContent side="top" className="w-auto p-3 text-sm shadow-md z-50">
                                     <div className="font-bold flex items-center gap-2">
-                                      <RiUserLine className="w-4 h-4 text-muted-foreground" />
-                                      {assignee.name}
+                                      <RiUserLine className="w-4 h-4 text-muted-foreground" />{assignee.name}
                                     </div>
                                     <div className="text-muted-foreground flex items-center gap-2 mt-1.5">
-                                      <RiPhoneLine className="w-4 h-4" />
-                                      {assignee.phone_number ||
-                                        "ไม่มีเบอร์โทรศัพท์"}
+                                      <RiPhoneLine className="w-4 h-4" />{assignee.phone_number || "ไม่มีเบอร์โทรศัพท์"}
                                     </div>
                                   </HoverCardContent>
                                 </HoverCard>
                               ))
                             ) : (
-                              <span className="text-xs text-muted-foreground italic">
-                                - ยังไม่ระบุ -
-                              </span>
+                              <span className="text-xs text-muted-foreground italic">- ยังไม่ระบุ -</span>
                             )}
                           </div>
                         )}
@@ -689,44 +645,20 @@ function TasksInnerContent() {
                         {req.plan_finish_date ? (
                           <div className="text-xs flex items-center gap-1 text-emerald-600 font-medium mt-1">
                             <RiCalendarCheckLine className="h-3.5 w-3.5" />
-                            {new Date(req.plan_finish_date).toLocaleString(
-                              "th-TH",
-                              {
-                                day: "2-digit",
-                                month: "2-digit",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )}{" "}
-                            น.
+                            {new Date(req.plan_finish_date).toLocaleString("th-TH", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} น.
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground italic mt-1 inline-block">
-                            ยังไม่กำหนด
-                          </span>
+                          <span className="text-xs text-muted-foreground italic mt-1 inline-block">ยังไม่กำหนด</span>
                         )}
                       </TableCell>
 
                       <TableCell className="align-top">
-                        <StatusBadge
-                          statusId={req.status_id}
-                          statusName={req.status_name}
-                          statusColor={req.status_color}
-                          statusVariant={req.status_variant}
-                        />
+                        <StatusBadge statusId={req.status_id} statusName={req.status_name} statusColor={req.status_color} statusVariant={req.status_variant} />
                       </TableCell>
 
-                      <TableCell
-                        className="text-right align-top"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {isMainDeptOwner && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-8 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-                            onClick={(e) => handleOpenManageDialog(e, req)}
-                          >
+                      <TableCell className="text-right align-top" onClick={(e) => e.stopPropagation()}>
+                        {isMainDeptOwner && ![4, 5].includes(req.status_id) && (
+                          <Button size="sm" variant="secondary" className="h-8 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700" onClick={(e) => handleOpenManageDialog(e, req)}>
                             <RiToolsLine className="h-4 w-4 mr-1" /> จัดการ
                           </Button>
                         )}
@@ -738,32 +670,20 @@ function TasksInnerContent() {
             </TableBody>
           </Table>
 
-          {/* ส่วนแบ่งหน้า (Pagination) */}
           {!isLoading && tasks.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-4 bg-muted/20 border-t border-border gap-4">
               <div className="text-sm text-muted-foreground order-2 sm:order-1">
                 แสดงหน้า <span className="font-medium text-foreground">{currentPage}</span> จาก <span className="font-medium text-foreground">{totalPages}</span> (รวม <span className="font-medium text-foreground">{totalRecords}</span> รายการ)
               </div>
-
               <div className="order-1 sm:order-2">
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious 
-                        href="#" 
-                        onClick={(e) => { e.preventDefault(); goToPage(currentPage - 1); }}
-                        className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                      />
+                      <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); goToPage(currentPage - 1); }} className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
                     </PaginationItem>
-                    
                     {renderPaginationItems()}
-
                     <PaginationItem>
-                      <PaginationNext 
-                        href="#" 
-                        onClick={(e) => { e.preventDefault(); goToPage(currentPage + 1); }}
-                        className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                      />
+                      <PaginationNext href="#" onClick={(e) => { e.preventDefault(); goToPage(currentPage + 1); }} className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"} />
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
@@ -771,37 +691,37 @@ function TasksInnerContent() {
             </div>
           )}
         </Card>
-      </Tabs>
+      </div>
 
-      {/* ================= 🌟 DIALOG จัดการ (รับงาน / ปิดงาน) ================= */}
-      <Dialog
-        open={!!managePrompt}
-        onOpenChange={(open) => !open && setManagePrompt(null)}
-      >
-        <DialogContent className="sm:max-w-[450px] font-sans">
+      <Dialog open={!!managePrompt} onOpenChange={(open) => !open && setManagePrompt(null)}>
+        <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-primary">
-              <RiToolsLine />
-              จัดการใบงาน: {managePrompt?.req_code}
+              <RiToolsLine />จัดการใบงาน: {managePrompt?.req_code}
             </DialogTitle>
           </DialogHeader>
-
           <div className="py-4 space-y-5 text-sm">
-            {[2, 7, 8, 10].includes(managePrompt?.status_id || 0) ? (
+            {[4, 5].includes(managePrompt?.status_id || 0) ? (
+              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 p-6 rounded-xl flex flex-col items-center gap-4 text-center">
+                <div className="h-12 w-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                  <RiCloseLine className="h-6 w-6 text-red-600 dark:text-red-500" />
+                </div>
+                <div className="space-y-2">
+                  <p className="font-bold text-red-900 dark:text-red-100 text-lg">ใบงานนี้ถูกปิดหรือยกเลิกแล้ว</p>
+                  <p className="text-sm text-red-700 dark:text-red-300 leading-relaxed">ไม่สามารถดำเนินการใดๆ เพิ่มเติมในหน้านี้ได้</p>
+                </div>
+                <Badge variant="destructive" className="px-3 py-1">{managePrompt?.status_name}</Badge>
+              </div>
+            ) : [2, 7, 8, 10].includes(managePrompt?.status_id || 0) ? (
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 p-6 rounded-xl flex flex-col items-center gap-4 text-center">
                 <div className="h-12 w-12 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center">
                   <RiAlertLine className="h-6 w-6 text-amber-600 dark:text-amber-500 animate-pulse" />
                 </div>
                 <div className="space-y-2">
                   <p className="font-bold text-amber-900 dark:text-amber-100 text-lg">อยู่ระหว่างรอการอนุมัติ</p>
-                  <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed">
-                    ใบงานนี้ยังไม่ผ่านการอนุมัติครบตามขั้นตอนของระบบ <br />
-                    กรุณารอให้ผู้อนุมัติพิจารณาให้เสร็จสิ้นก่อนเริ่มบันทึกเวลา
-                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 leading-relaxed">ใบงานนี้ยังไม่ผ่านการอนุมัติครบตามขั้นตอนของระบบ <br />กรุณารอให้ผู้อนุมัติพิจารณาให้เสร็จสิ้นก่อนเริ่มบันทึกเวลา</p>
                 </div>
-                <Badge className="bg-amber-500 text-white border-none px-3 py-1">
-                  {managePrompt?.status_name}
-                </Badge>
+                <Badge className="bg-amber-500 text-white border-none px-3 py-1">{managePrompt?.status_name}</Badge>
               </div>
             ) : !managePrompt?.actual_start_date ? (
               <>
@@ -817,11 +737,9 @@ function TasksInnerContent() {
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">วันที่ประมาณการเสร็จ (SLA) <span className="text-red-500">*</span></label>
                   <Input type="datetime-local" value={planFinishDate} onChange={(e) => setPlanFinishDate(e.target.value)} />
                 </div>
-
                 {planStartDate && planFinishDate && (
                   <Button className="w-full bg-primary hover:bg-primary/90 mt-4 h-10 shadow-lg shadow-primary/20" onClick={handleStartTask} disabled={isSubmitting}>
-                    {isSubmitting ? <RiLoader4Line className="animate-spin mr-2 h-5 w-5" /> : <RiPlayCircleLine className="mr-2 h-5 w-5" />}
-                    รับงาน (เริ่มดำเนินการทันที)
+                    {isSubmitting ? <RiLoader4Line className="animate-spin mr-2 h-5 w-5" /> : <RiPlayCircleLine className="mr-2 h-5 w-5" />}รับงาน (เริ่มดำเนินการทันที)
                   </Button>
                 )}
               </>
@@ -843,19 +761,15 @@ function TasksInnerContent() {
                     </div>
                   </div>
                 </div>
-
                 <div className="space-y-2 pt-2">
                   <label className="text-sm font-bold text-emerald-600 flex items-center gap-1">
-                    <RiCheckDoubleLine className="h-4 w-4" />
-                    วันที่สิ้นสุดงานจริง <span className="text-red-500">*</span>
+                    <RiCheckDoubleLine className="h-4 w-4" />วันที่สิ้นสุดงานจริง <span className="text-red-500">*</span>
                   </label>
                   <Input type="datetime-local" value={actualFinishDate} onChange={(e) => setActualFinishDate(e.target.value)} className="border-emerald-200 focus-visible:ring-emerald-500" />
                 </div>
-
                 {actualFinishDate && (
                   <Button className="w-full bg-emerald-600 hover:bg-emerald-700 mt-4 h-10 shadow-lg shadow-emerald-200" onClick={handleCloseTask} disabled={isSubmitting}>
-                    {isSubmitting ? <RiLoader4Line className="animate-spin mr-2 h-5 w-5" /> : <RiCheckLine className="mr-2 h-5 w-5" />}
-                    บันทึกปิดงาน
+                    {isSubmitting ? <RiLoader4Line className="animate-spin mr-2 h-5 w-5" /> : <RiCheckLine className="mr-2 h-5 w-5" />}บันทึกปิดงาน
                   </Button>
                 )}
               </>
@@ -871,15 +785,9 @@ function TasksInnerContent() {
         onRefresh={refreshRequestData}
         footerActions={
           <>
-            <Button variant="outline" onClick={() => setIsSheetOpen(false)} className="w-full sm:w-auto">
-              ปิดหน้าต่าง
-            </Button>
-            <Button
-              className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
-              onClick={() => router.push(`/requests/${selectedRequest?.id}`)}
-            >
-              <RiExternalLinkLine className="h-4 w-4 mr-2" />
-              จัดการใบงานแบบเต็ม
+            <Button variant="outline" onClick={() => setIsSheetOpen(false)} className="w-full sm:w-auto">ปิดหน้าต่าง</Button>
+            <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm" onClick={() => router.push(`/requests/${selectedRequest?.id}`)}>
+              <RiExternalLinkLine className="h-4 w-4 mr-2" />จัดการใบงานแบบเต็ม
             </Button>
           </>
         }
@@ -890,13 +798,7 @@ function TasksInnerContent() {
 
 export default function TasksContent() {
   return (
-    <Suspense
-      fallback={
-        <div className="p-6 text-center">
-          <RiLoader4Line className="animate-spin h-8 w-8 mx-auto text-primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="p-6 text-center"><RiLoader4Line className="animate-spin h-8 w-8 mx-auto text-primary" /></div>}>
       <TasksInnerContent />
     </Suspense>
   );

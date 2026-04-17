@@ -12,7 +12,7 @@ use argon2::{
 
 use crate::error::ApiError;
 use crate::user::models::Claims;
-use super::models::{TypePayload, TopicPayload, SubjectPayload, DepartmentPayload, DepartmentResponse, UserListResponse, UserPayload, UserFilter, UserPaginatedResponse};
+use super::models::{TypePayload, TopicPayload, SubjectPayload, DepartmentPayload, DepartmentResponse, UserListResponse, UserPayload, UserFilter, UserPaginatedResponse, StatusResponse};
 
 // ฟังก์ชันเช็คสิทธิ์ใช้งาน (ใช้ร่วมกัน)
 fn check_admin_access(claims: &Claims) -> Result<(), ApiError> {
@@ -238,6 +238,39 @@ pub async fn delete_department(
     Ok((StatusCode::OK, Json(json!({ "message": "ลบข้อมูลสำเร็จ" }))))
 }
 
+pub async fn import_departments(
+    State(pool): State<PgPool>, Extension(claims): Extension<Claims>, Json(payload): Json<Vec<DepartmentPayload>>,
+) -> Result<(StatusCode, Json<Value>), ApiError> {
+    check_admin_access(&claims)?;
+    let mut tx = pool.begin().await?;
+    for item in payload {
+        let mut existing_id = item.id;
+
+        // 1. ถ้าไม่มี ID ให้ลองหาจากชื่อแผนก
+        if existing_id.is_none() {
+            let by_name = sqlx::query!("SELECT id FROM m_departments WHERE name = $1", item.name)
+                .fetch_optional(&mut *tx).await?;
+            if let Some(record) = by_name { existing_id = Some(record.id); }
+        }
+
+        // 2. ถ้ามี ID (ไม่ว่าจะมาจากการส่งมาตรงๆ หรือหาจากชื่อ) ให้ทำการ Update
+        if let Some(id) = existing_id {
+            sqlx::query!(
+                "UPDATE m_departments SET name = $1, del_flag = FALSE WHERE id = $2",
+                item.name, id
+            ).execute(&mut *tx).await?;
+        } else {
+            // 3. ถ้าหาไม่เจอจริงๆ ให้ Insert ใหม่
+            sqlx::query!(
+                "INSERT INTO m_departments (name) VALUES ($1)",
+                item.name
+            ).execute(&mut *tx).await?;
+        }
+    }
+    tx.commit().await?;
+    Ok((StatusCode::CREATED, Json(json!({"message": "นำเข้าข้อมูลแผนกสำเร็จ"}))))
+}
+
 // ==========================================
 // 🚀 Handlers สำหรับ Users
 // ==========================================
@@ -323,8 +356,9 @@ pub async fn create_user(
     if claims.role != "admin" { return Err(ApiError::Forbidden("Admin เท่านั้น".to_string())); }
 
     let raw_password = payload.password
+        .as_deref()
         .filter(|p| !p.trim().is_empty())
-        .unwrap_or_else(|| "123456".to_string());
+        .unwrap_or("123456");
 
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
@@ -347,7 +381,16 @@ pub async fn create_user(
         payload.employee_code
     )
     .execute(&pool).await
-    .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+    .map_err(|e| {
+        let err_msg = e.to_string();
+        if err_msg.contains("users_employee_code_key") {
+            ApiError::BadRequest("รหัสพนักงานนี้มีในระบบแล้ว กรุณาใช้รหัสอื่น".to_string())
+        } else if err_msg.contains("users_email_key") {
+            ApiError::BadRequest("อีเมลนี้มีในระบบแล้ว".to_string())
+        } else {
+            ApiError::InternalServerError(err_msg)
+        }
+    })?;
 
     Ok((StatusCode::CREATED, Json(json!({ "message": "สร้างผู้ใช้งานสำเร็จ" }))))
 }
@@ -362,9 +405,9 @@ pub async fn update_user(
         return Err(ApiError::Forbidden("Admin เท่านั้น".to_string())); 
     }
 
-    let new_password = payload.password.filter(|p| !p.trim().is_empty());
+    let new_password = payload.password.as_deref().filter(|p| !p.trim().is_empty());
 
-    if let Some(pwd) = new_password {
+    let result = if let Some(pwd) = new_password {
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
         let password_hash = argon2.hash_password(pwd.as_bytes(), &salt)
@@ -386,8 +429,6 @@ pub async fn update_user(
             id
         )
         .execute(&pool).await
-        .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
-
     } else {
         sqlx::query!(
             "UPDATE users SET name = $1, username = $2, email = $3, role = $4, department_id = $5, position = $6, phone_number = $7, is_active = $8, employee_code = $9 WHERE id = $10",
@@ -403,8 +444,16 @@ pub async fn update_user(
             id
         )
         .execute(&pool).await
-        .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
-    }
+    };
+
+    result.map_err(|e| {
+        let err_msg = e.to_string();
+        if err_msg.contains("users_employee_code_key") {
+            ApiError::BadRequest("รหัสพนักงานนี้มีในระบบแล้ว ไม่สามารถเปลี่ยนเป็นรหัสนี้ได้".to_string())
+        } else {
+            ApiError::InternalServerError(err_msg)
+        }
+    })?;
 
     Ok((StatusCode::OK, Json(json!({ "message": "อัปเดตข้อมูลสำเร็จ" }))))
 }
@@ -550,4 +599,16 @@ pub async fn import_subjects(
     }
     tx.commit().await?;
     Ok((StatusCode::CREATED, Json(json!({"message": "นำเข้าหัวข้อปัญหาสำเร็จ"}))))
+}
+
+// ==========================================
+// 🆕 5. Master Status
+// ==========================================
+pub async fn get_statuses(State(pool): State<PgPool>) -> Result<Json<Vec<StatusResponse>>, ApiError> {
+    let statuses = sqlx::query_as!(
+        StatusResponse,
+        "SELECT id, name_th, badge_variant, color_class FROM m_status ORDER BY id ASC"
+    )
+    .fetch_all(&pool).await.map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+    Ok(Json(statuses))
 }

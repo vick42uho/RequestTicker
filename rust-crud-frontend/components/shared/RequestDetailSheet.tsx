@@ -538,7 +538,7 @@ export function RequestDetailSheet({
               <RiInformationLine className="h-3.5 w-3.5" />
               <span className="text-[11px] font-medium uppercase tracking-wide">รายละเอียดอาการ / ปัญหา</span>
             </div>
-            <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{request.description || "ไม่มีรายละเอียด"}</div>
+            <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words overflow-x-auto">{request.description || "ไม่มีรายละเอียด"}</div>
           </section>
 
           {request.requirement && (
@@ -547,7 +547,7 @@ export function RequestDetailSheet({
                 <RiFileList3Line className="h-3.5 w-3.5" />
                 <span className="text-[11px] font-medium uppercase tracking-wide">สิ่งที่ต้องการเพิ่มเติม</span>
               </div>
-              <div className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed whitespace-pre-wrap">{request.requirement}</div>
+              <div className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed whitespace-pre-wrap break-words overflow-x-auto">{request.requirement}</div>
             </section>
           )}
 
@@ -590,7 +590,9 @@ export function RequestDetailSheet({
                 </div>
 
                 <div className="relative pl-4 space-y-4 before:absolute before:inset-y-1 before:left-[5px] before:w-px before:bg-border">
-                  {request.approvals.map((app: any, idx: number) => {
+                  {[...(request.approvals || [])]
+                    .sort((a: any, b: any) => new Date(a.action_date || 0).getTime() - new Date(b.action_date || 0).getTime())
+                    .map((app: any, idx: number) => {
                     const statId = app.status_id;
                     const isApproved = statId ? statId === 4 || statId === 6 || statId === 10 : ["อนุมัติ", "เสร็จสิ้น", "รับงานแล้ว", "ปิดงาน"].includes(app.status_name);
                     const isRejected = statId ? statId === 5 : ["ไม่อนุมัติ", "ยกเลิก"].includes(app.status_name);

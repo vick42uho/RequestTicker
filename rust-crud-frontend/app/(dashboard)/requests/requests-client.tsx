@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { toast } from "sonner";
@@ -14,11 +14,6 @@ import {
   RiExternalLinkLine,
   RiImageLine,
   RiEarthLine,
-  RiFilePdfLine,
-  RiFileWordLine,
-  RiFileExcelLine,
-  RiFileZipLine,
-  RiFileTextLine,
   RiCheckLine,
   RiCloseLine,
   RiArticleLine,
@@ -33,7 +28,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
-// 🌟 นำเข้า Tabs ของแท้มาใช้
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Pagination,
@@ -47,6 +41,7 @@ import {
 import { StatusBadge } from "@/components/shared/status-badge";
 import { RequestHoverCard } from "@/components/shared/RequestHoverCard";
 import { RequestDetailSheet } from "@/components/shared/RequestDetailSheet";
+import { TaskFilterBar, FilterValues } from "@/components/shared/TaskFilterBar";
 
 // 🌟 นำเข้า Component สำหรับทำ Modal ตรวจรับงาน
 import {
@@ -87,69 +82,23 @@ interface HelpdeskRequest {
   approvals?: any[];
 }
 
-const getFileDisplayInfo = (fileName: string) => {
-  const ext = fileName.split(".").pop()?.toLowerCase() || "";
-  if (["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) {
-    return {
-      Icon: RiImageLine,
-      color: "text-blue-600 dark:text-blue-400",
-      bg: "bg-blue-50 dark:bg-blue-500/10",
-      border: "border-blue-200 dark:border-blue-500/20",
-      hover: "hover:bg-blue-100 dark:hover:bg-blue-500/20",
-    };
-  }
-  if (ext === "pdf") {
-    return {
-      Icon: RiFilePdfLine,
-      color: "text-red-600 dark:text-red-400",
-      bg: "bg-red-50 dark:bg-red-500/10",
-      border: "border-red-200 dark:border-red-500/20",
-      hover: "hover:bg-red-100 dark:hover:bg-red-500/20",
-    };
-  }
-  if (["doc", "docx"].includes(ext)) {
-    return {
-      Icon: RiFileWordLine,
-      color: "text-blue-700 dark:text-blue-500",
-      bg: "bg-blue-50 dark:bg-blue-500/10",
-      border: "border-blue-200 dark:border-blue-500/20",
-      hover: "hover:bg-blue-100 dark:hover:bg-blue-500/20",
-    };
-  }
-  if (["xls", "xlsx", "csv"].includes(ext)) {
-    return {
-      Icon: RiFileExcelLine,
-      color: "text-emerald-600 dark:text-emerald-400",
-      bg: "bg-emerald-50 dark:bg-emerald-500/10",
-      border: "border-emerald-200 dark:border-emerald-500/20",
-      hover: "hover:bg-emerald-100 dark:hover:bg-emerald-500/20",
-    };
-  }
-  if (["zip", "rar", "7z"].includes(ext)) {
-    return {
-      Icon: RiFileZipLine,
-      color: "text-amber-600 dark:text-amber-400",
-      bg: "bg-amber-50 dark:bg-amber-500/10",
-      border: "border-amber-200 dark:border-amber-500/20",
-      hover: "hover:bg-amber-100 dark:hover:bg-amber-500/20",
-    };
-  }
-  return {
-    Icon: RiFileTextLine,
-    color: "text-slate-600 dark:text-slate-400",
-    bg: "bg-slate-50 dark:bg-slate-500/10",
-    border: "border-slate-200 dark:border-slate-500/20",
-    hover: "hover:bg-slate-100 dark:hover:bg-slate-500/20",
-  };
-};
-
 export default function RequestsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [requests, setRequests] = useState<HelpdeskRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        try {
+          return JSON.parse(userStr).role || "user";
+        } catch (e) { return "user"; }
+      }
+    }
+    return "user";
+  });
 
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
@@ -158,64 +107,58 @@ export default function RequestsContent() {
     useState<HelpdeskRequest | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // 🌟 อ่านค่าจาก URL และจัดการ State
-  const filterParam = searchParams.get("filter") || "dept";
+  // 🌟 อ่านค่าจาก URL โดยตรง
+  const currentFilter = searchParams.get("filter") || "dept";
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
-  const [currentFilter, setCurrentFilter] = useState(filterParam);
+
+  // 🆕 Filter States
+  const [filters, setFilters] = useState<FilterValues>({
+    search: "",
+    status_ids: [],
+    type_ids: [],
+    requester_name: "",
+    start_date: "",
+    end_date: "",
+  });
 
   // 🌟 State สำหรับระบบตรวจรับงาน (UAT)
   const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
-  const [verifyType, setVerifyType] = useState<"approve" | "reject" | null>(
-    null,
-  );
+  const [verifyType, setVerifyType] = useState<"approve" | "reject" | null>(null);
   const [verifyRemark, setVerifyRemark] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
 
-  useEffect(() => {
-    try {
-      const userStr = localStorage.getItem("user");
-      if (userStr) {
-        const userData = JSON.parse(userStr);
-        setUserRole(userData.role || "user");
-      } else {
-        setUserRole("user");
-      }
-    } catch (error) {
-      setUserRole("user");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (filterParam !== currentFilter) {
-      setCurrentFilter(filterParam);
-    }
-  }, [filterParam]);
-
   const isAdmin = userRole === "admin" || userRole === "agent";
 
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await fetchApi<PaginatedResponse<HelpdeskRequest>>(
-        `/requests?filter=${currentFilter}&page=${currentPage}`,
-        { method: "GET" },
-      );
-      setRequests(data.data);
-      setTotalPages(data.total_pages);
-      setTotalRecords(data.total_records);
+      
+      let url = `/requests?filter=${currentFilter}&page=${currentPage}&limit=10`;
+      
+      if (filters.search) url += `&search=${encodeURIComponent(filters.search)}`;
+      if (filters.status_ids && filters.status_ids.length > 0) url += `&status_ids=${filters.status_ids.join(",")}`;
+      if (filters.type_ids && filters.type_ids.length > 0) url += `&type_ids=${filters.type_ids.join(",")}`;
+      if (filters.requester_name) url += `&requester_name=${encodeURIComponent(filters.requester_name)}`;
+      if (filters.start_date) url += `&start_date=${filters.start_date}`;
+      if (filters.end_date) url += `&end_date=${filters.end_date}`;
+
+      const data = await fetchApi<PaginatedResponse<HelpdeskRequest>>(url, { method: "GET" });
+      
+      setRequests(data.data || []);
+      setTotalPages(data.total_pages || 1);
+      setTotalRecords(data.total_records || 0);
     } catch (error: any) {
-      toast.error("ดึงข้อมูลไม่สำเร็จ: " + (error.message || "เกิดข้อผิดพลาด"));
+      toast.error("ดึงข้อมูลไม่สำเร็จ");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentFilter, currentPage, filters]);
 
   const refreshRequestData = async () => {
     if (!selectedRequest) return;
     try {
       const updatedReq = await fetchApi<HelpdeskRequest>(`/requests/${selectedRequest.id}`);
       setSelectedRequest(updatedReq);
-      // อัปเดตในรายการหลักด้วยเพื่อให้ข้อมูลตรงกัน
       setRequests(prev => prev.map(r => r.id === updatedReq.id ? updatedReq : r));
     } catch (error) {
       console.error("Failed to refresh request data");
@@ -224,10 +167,9 @@ export default function RequestsContent() {
 
   useEffect(() => {
     loadRequests();
-  }, [currentFilter, currentPage]);
+  }, [loadRequests]);
 
   const handleTabChange = (value: string) => {
-    setCurrentFilter(value);
     router.push(`/requests?filter=${value}&page=1`);
   };
 
@@ -236,7 +178,6 @@ export default function RequestsContent() {
     router.push(`/requests?filter=${currentFilter}&page=${pageNumber}`);
   };
 
-  // 🌟 ฟังก์ชันสำหรับสร้างรายการหน้า (Pagination Logic)
   const renderPaginationItems = () => {
     const items = [];
     const maxVisiblePages = 5;
@@ -247,10 +188,7 @@ export default function RequestsContent() {
           <PaginationItem key={i}>
             <PaginationLink
               href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                goToPage(i);
-              }}
+              onClick={(e) => { e.preventDefault(); goToPage(i); }}
               isActive={currentPage === i}
             >
               {i}
@@ -259,15 +197,11 @@ export default function RequestsContent() {
         );
       }
     } else {
-      // มีหน้าเยอะ ให้แสดงแบบมี Ellipsis
       items.push(
         <PaginationItem key={1}>
           <PaginationLink
             href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              goToPage(1);
-            }}
+            onClick={(e) => { e.preventDefault(); goToPage(1); }}
             isActive={currentPage === 1}
           >
             1
@@ -276,11 +210,7 @@ export default function RequestsContent() {
       );
 
       if (currentPage > 3) {
-        items.push(
-          <PaginationItem key="ellipsis-start">
-            <PaginationEllipsis />
-          </PaginationItem>,
-        );
+        items.push(<PaginationItem key="ellipsis-start"><PaginationEllipsis /></PaginationItem>);
       }
 
       const start = Math.max(2, currentPage - 1);
@@ -292,10 +222,7 @@ export default function RequestsContent() {
           <PaginationItem key={i}>
             <PaginationLink
               href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                goToPage(i);
-              }}
+              onClick={(e) => { e.preventDefault(); goToPage(i); }}
               isActive={currentPage === i}
             >
               {i}
@@ -305,21 +232,14 @@ export default function RequestsContent() {
       }
 
       if (currentPage < totalPages - 2) {
-        items.push(
-          <PaginationItem key="ellipsis-end">
-            <PaginationEllipsis />
-          </PaginationItem>,
-        );
+        items.push(<PaginationItem key="ellipsis-end"><PaginationEllipsis /></PaginationItem>);
       }
 
       items.push(
         <PaginationItem key={totalPages}>
           <PaginationLink
             href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              goToPage(totalPages);
-            }}
+            onClick={(e) => { e.preventDefault(); goToPage(totalPages); }}
             isActive={currentPage === totalPages}
           >
             {totalPages}
@@ -330,7 +250,6 @@ export default function RequestsContent() {
     return items;
   };
 
-  // 🌟 1. ปรับ Badge ให้เป็น Dynamic ใช้ข้อมูลสีจาก Database 100%
   const getStatusBadge = (req: HelpdeskRequest) => {
     return (
       <StatusBadge
@@ -348,11 +267,9 @@ export default function RequestsContent() {
     setIsDialogOpen(true);
   };
 
-  // 🌟 ฟังก์ชันสำหรับจัดการการตรวจรับงาน / ตีกลับ
   const handleVerifySubmit = async () => {
     if (!selectedRequest) return;
 
-    // ตรวจสอบ: ถ้าตีกลับต้องใส่เหตุผล
     if (verifyType === "reject" && !verifyRemark.trim()) {
       toast.error("กรุณาระบุเหตุผลในการตีกลับงานให้ช่างแก้ไข");
       return;
@@ -374,11 +291,10 @@ export default function RequestsContent() {
           : "ส่งตีกลับงานให้ช่างแก้ไขเรียบร้อย",
       );
 
-      // รีเซ็ตค่าและปิด Modal
       setIsVerifyDialogOpen(false);
       setVerifyRemark("");
-      setIsDialogOpen(false); // ปิดหน้าต่าง Sheet
-      loadRequests(); // โหลดข้อมูลตารางใหม่
+      setIsDialogOpen(false); 
+      loadRequests(); 
     } catch (error: any) {
       toast.error(error.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
     } finally {
@@ -387,18 +303,13 @@ export default function RequestsContent() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
-      {/* 🌟 Header Section: Title & Actions */}
+    <div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full font-sans">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                <RiArticleLine className="h-8 w-8 text-primary" />
-                รายการใบงาน
-              </h1>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <RiArticleLine className="h-8 w-8 text-primary" />
+            รายการใบงาน
+          </h1>
           <p className="text-muted-foreground mt-1">
             {currentFilter === "me"
               ? "รายการที่คุณแจ้งซ่อมไว้ทั้งหมด"
@@ -417,33 +328,39 @@ export default function RequestsContent() {
         </Button>
       </div>
 
-      {/* 🌟 Tabs Section */}
-      <Tabs
-        value={currentFilter}
-        onValueChange={handleTabChange}
-        className="w-full"
-      >
-        <TabsList className="mb-4">
-          {isAdmin && (
-            <TabsTrigger value="all" className="flex items-center gap-2">
-              <RiEarthLine className="h-4 w-4" /> งานทั้งหมด
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="dept" className="flex items-center gap-2">
-            <RiCommunityLine className="h-4 w-4" /> งานในแผนก
-          </TabsTrigger>
-          <TabsTrigger value="me" className="flex items-center gap-2">
-            <RiUserLine className="h-4 w-4" /> งานของฉัน
-          </TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <Tabs
+            value={currentFilter}
+            onValueChange={handleTabChange}
+            className="w-full sm:w-auto"
+          >
+            <TabsList>
+              {isAdmin && (
+                <TabsTrigger value="all" className="flex items-center gap-2">
+                  <RiEarthLine className="h-4 w-4" /> งานทั้งหมด
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="dept" className="flex items-center gap-2">
+                <RiCommunityLine className="h-4 w-4" /> งานในแผนก
+              </TabsTrigger>
+              <TabsTrigger value="me" className="flex items-center gap-2">
+                <RiUserLine className="h-4 w-4" /> งานของฉัน
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-        {/* ตารางแสดงข้อมูล */}
-        <Card className="rounded-xl overflow-hidden border shadow-sm">
+          <div className="w-full sm:max-w-md lg:max-w-xl">
+            <TaskFilterBar onFilterChange={setFilters} />
+          </div>
+        </div>
+
+        <Card className="rounded-xl overflow-hidden border shadow-sm flex flex-col">
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead className="w-30">รหัสใบงาน</TableHead>
-                <TableHead className="w-87.5">หัวข้อปัญหา</TableHead>
+                <TableHead className="min-w-[300px]">หัวข้อปัญหา</TableHead>
                 <TableHead>ผู้แจ้ง</TableHead>
                 <TableHead>สถานะ</TableHead>
                 <TableHead className="text-right">วันที่แจ้ง</TableHead>
@@ -461,7 +378,7 @@ export default function RequestsContent() {
                   <TableCell colSpan={5} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <RiFileList3Line className="h-12 w-12 mb-2 text-muted-foreground/50" />
-                      <p>ไม่มีข้อมูลใบงานในหมวดหมู่นี้</p>
+                      <p>ไม่มีข้อมูลใบงาน</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -482,10 +399,9 @@ export default function RequestsContent() {
                       </button>
                     </TableCell>
 
-                    <TableCell className="max-w-87.5 py-3">
+                    <TableCell className="whitespace-normal py-3">
                       <div className="flex flex-col">
                         <RequestHoverCard request={req}>
-                          {/* สิ่งที่อยู่ตรงนี้คือ Trigger (หน้าตาข้อความในตาราง) */}
                           <div className="flex items-center gap-1.5 cursor-pointer group max-w-[300px]">
                             <span className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-sm">
                               {req.subject_name || "ไม่ระบุหัวข้อ"}
@@ -529,23 +445,10 @@ export default function RequestsContent() {
             </TableBody>
           </Table>
 
-          {/* ส่วนแบ่งหน้า (Pagination) */}
           {!isLoading && requests.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-4 bg-muted/20 border-t border-border gap-4">
               <div className="text-sm text-muted-foreground order-2 sm:order-1">
-                แสดงหน้า{" "}
-                <span className="font-medium text-foreground">
-                  {currentPage}
-                </span>{" "}
-                จาก{" "}
-                <span className="font-medium text-foreground">
-                  {totalPages}
-                </span>{" "}
-                (รวม{" "}
-                <span className="font-medium text-foreground">
-                  {totalRecords}
-                </span>{" "}
-                รายการ)
+                แสดงหน้า <span className="font-medium text-foreground">{currentPage}</span> จาก <span className="font-medium text-foreground">{totalPages}</span> (รวม <span className="font-medium text-foreground">{totalRecords}</span> รายการ)
               </div>
 
               <div className="order-1 sm:order-2">
@@ -554,15 +457,8 @@ export default function RequestsContent() {
                     <PaginationItem>
                       <PaginationPrevious
                         href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          goToPage(currentPage - 1);
-                        }}
-                        className={
-                          currentPage <= 1
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
+                        onClick={(e) => { e.preventDefault(); goToPage(currentPage - 1); }}
+                        className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
 
@@ -571,15 +467,8 @@ export default function RequestsContent() {
                     <PaginationItem>
                       <PaginationNext
                         href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          goToPage(currentPage + 1);
-                        }}
-                        className={
-                          currentPage >= totalPages
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
+                        onClick={(e) => { e.preventDefault(); goToPage(currentPage + 1); }}
+                        className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
                   </PaginationContent>
@@ -588,9 +477,8 @@ export default function RequestsContent() {
             </div>
           )}
         </Card>
-      </Tabs>
+      </div>
 
-      {/* ================= SHEET ดูรายละเอียดใบงานพรีเมียม ================= */}
       <RequestDetailSheet
         isOpen={isDialogOpen}
         onClose={setIsDialogOpen}
@@ -598,7 +486,6 @@ export default function RequestsContent() {
         onRefresh={refreshRequestData}
         footerActions={
           <div className="flex w-full items-center justify-between">
-            {/* ฝั่งซ้าย: โชว์ปุ่มตรวจรับเฉพาะงานที่รอการตรวจรับ (สถานะ 9) */}
             <div className="flex items-center gap-2">
               {selectedRequest?.status_id === 9 && (
                 <>
@@ -624,7 +511,6 @@ export default function RequestsContent() {
               )}
             </div>
 
-            {/* ฝั่งขวา: ปุ่มจัดการปกติ */}
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 ปิดหน้าต่าง
@@ -641,14 +527,11 @@ export default function RequestsContent() {
         }
       />
 
-      {/* ================= MODAL สำหรับตรวจรับงาน / ตีกลับ (UAT) ================= */}
       <Dialog open={isVerifyDialogOpen} onOpenChange={setIsVerifyDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md font-sans">
           <DialogHeader>
             <DialogTitle>
-              {verifyType === "approve"
-                ? "ยืนยันการตรวจรับงาน"
-                : "ตีกลับงานให้แก้ไข"}
+              {verifyType === "approve" ? "ยืนยันการตรวจรับงาน" : "ตีกลับงานให้แก้ไข"}
             </DialogTitle>
             <DialogDescription>
               {verifyType === "approve"
@@ -660,17 +543,10 @@ export default function RequestsContent() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                หมายเหตุ / ข้อเสนอแนะ{" "}
-                {verifyType === "reject" && (
-                  <span className="text-destructive">*</span>
-                )}
+                หมายเหตุ / ข้อเสนอแนะ {verifyType === "reject" && <span className="text-destructive">*</span>}
               </label>
               <Textarea
-                placeholder={
-                  verifyType === "reject"
-                    ? "ระบุสิ่งที่ต้องการให้แก้ไข..."
-                    : "ระบุข้อความตอบกลับช่าง (ถ้ามี)..."
-                }
+                placeholder={verifyType === "reject" ? "ระบุสิ่งที่ต้องการให้แก้ไข..." : "ระบุข้อความตอบกลับช่าง (ถ้ามี)..."}
                 value={verifyRemark}
                 onChange={(e) => setVerifyRemark(e.target.value)}
                 rows={4}
@@ -679,26 +555,14 @@ export default function RequestsContent() {
           </div>
 
           <DialogFooter className="flex sm:justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setIsVerifyDialogOpen(false)}
-              disabled={isVerifying}
-            >
-              ยกเลิก
-            </Button>
+            <Button variant="outline" onClick={() => setIsVerifyDialogOpen(false)} disabled={isVerifying}>ยกเลิก</Button>
             <Button
               variant={verifyType === "approve" ? "default" : "destructive"}
-              className={
-                verifyType === "approve"
-                  ? "bg-green-600 hover:bg-green-700 text-white"
-                  : ""
-              }
+              className={verifyType === "approve" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
               onClick={handleVerifySubmit}
               disabled={isVerifying}
             >
-              {isVerifying ? (
-                <RiLoader4Line className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
+              {isVerifying && <RiLoader4Line className="h-4 w-4 animate-spin mr-2" />}
               {verifyType === "approve" ? "ยืนยันและปิดงาน" : "ส่งตีกลับ"}
             </Button>
           </DialogFooter>

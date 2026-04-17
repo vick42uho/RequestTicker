@@ -211,12 +211,13 @@ const steps = preWorkApprovals.map((app: any, idx: number) => {
   }, [requestId, setValue]);
 
   // 🌟 เช็คสิทธิ์การแก้ไข (admin แก้ไขได้หมด, agent ยกเลิกได้อย่างเดียว)
-  const isOwner = currentUser?.id === data?.requester_id;
+  const isOwner = currentUser?.id?.toString() === data?.requester_id?.toString();
   const isAdmin = currentUser?.role === "admin";
   const isAgent = currentUser?.role === "agent";
 
-  const isPendingOrWaiting = data?.status_id === 1 || data?.status_id === 2;
-  const hasBeenActedUpon = data?.approvals && data.approvals.some((app: any) => app.action_date !== null);
+  // เพิ่มสถานะ 8 (รอผู้รับงานอนุมัติ) และ 10 (รอผู้อนุมัติร่วม) เข้าไปด้วย
+  const isPendingOrWaiting = data?.status_id === 1 || data?.status_id === 2 || data?.status_id === 8 || data?.status_id === 10;
+  const hasBeenActedUpon = data?.approvals && Array.isArray(data.approvals) && data.approvals.some((app: any) => app.action_date !== null);
 
   // สิทธิ์การแก้ไข: Admin หรือ เจ้าของ (ถ้ายังไม่ถูกดำเนินการ)
   const canEdit = isAdmin || (isOwner && isPendingOrWaiting && !hasBeenActedUpon);
@@ -351,7 +352,7 @@ const steps = preWorkApprovals.map((app: any, idx: number) => {
         )}
       </div>
 
-      {!canEdit && (
+      {/* {!canEdit && (
         <Alert className="mb-6 bg-amber-50 border-amber-200 text-amber-800">
           <RiInformationLine className="h-5 w-5" />
           <AlertDescription>
@@ -360,7 +361,7 @@ const steps = preWorkApprovals.map((app: any, idx: number) => {
               : "ใบงานนี้กำลังถูกดำเนินการ หรือผ่านการพิจารณาไปแล้ว ไม่สามารถแก้ไขได้"}
           </AlertDescription>
         </Alert>
-      )}
+      )} */}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
